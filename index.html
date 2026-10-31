@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1220">
+<title>RailTech 360 | Manutenzione ferroviaria</title>
+<style>
+:root{--bg:#0a1020;--panel:#111b2e;--panel2:#15223a;--line:#24334d;--text:#edf3ff;--muted:#94a5c2;--blue:#4ea1ff;--cyan:#49d4e8;--green:#42d6a0;--amber:#f4bd58;--red:#ff727e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
+.sidebar{background:#0d1628;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:24px}
+.brand{display:flex;align-items:center;gap:11px;padding:0 10px}.brand-icon{width:39px;height:39px;border-radius:12px;background:linear-gradient(135deg,#287de7,#39d2dc);display:grid;place-items:center;font-size:21px;font-weight:900;color:#071426}.brand strong{display:block;font-size:16px;letter-spacing:.2px}.brand small{color:var(--muted);font-size:11px}
+.nav-label{font-size:10px;color:#7285a5;font-weight:800;letter-spacing:1.6px;padding:0 13px;margin-bottom:7px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#9fb0ca;text-align:left;padding:11px 13px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button:hover{background:#17243a;color:white}.nav button.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}.nav .ico{width:20px;text-align:center;font-size:16px}.side-bottom{margin-top:auto;border:1px solid var(--line);background:#111c30;padding:13px;border-radius:12px}.side-bottom b{font-size:12px}.side-bottom p{font-size:11px;color:var(--muted);margin:5px 0 0}
+main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#0b1323;position:sticky;top:0;z-index:4}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:12px}.badge-demo{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#f7c86b;border:1px solid #72572a;background:#302717;padding:6px 9px;border-radius:7px;font-weight:800}.avatar{width:34px;height:34px;border-radius:50%;background:#24466d;color:#cce6ff;display:grid;place-items:center;font-weight:800}
+.content{padding:28px 30px 40px;max-width:1600px;margin:auto}.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:24px}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800}.pagehead h1{margin:5px 0;font-size:27px;letter-spacing:-.7px}.pagehead p{color:var(--muted);margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#17243a;color:var(--text);padding:10px 14px;border-radius:9px;font-weight:650}.btn:hover{border-color:#5276a4}.btn.primary{background:var(--blue);border-color:var(--blue);color:#071426}.btn.subtle{background:transparent}.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}.kpi-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}.kpi-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#1b3150;color:#8ec4ff;font-size:17px}.kpi-num{font-size:29px;font-weight:800;letter-spacing:-1px;margin:10px 0 3px}.kpi-foot{color:var(--muted);font-size:11px}.kpi-foot span{color:var(--green)}
+.columns{grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr)}.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}.card-head h2{font-size:15px;margin:0}.muted{color:var(--muted)}.tiny{font-size:11px}.linkbtn{border:0;background:none;color:var(--blue);font-weight:700;padding:4px}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th{text-align:left;color:#8295b4;font-size:10px;letter-spacing:.9px;text-transform:uppercase;font-weight:800;padding:11px 10px;border-bottom:1px solid var(--line)}td{padding:14px 10px;border-bottom:1px solid #1e2c43;font-size:12px}tr:last-child td{border-bottom:0}tbody tr:hover{background:#142139}.main-cell{font-weight:700}.sub-cell{color:var(--muted);font-size:11px;margin-top:3px}.status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;font-size:10px;font-weight:800}.status:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.s-open{color:var(--amber);background:#392e1b}.s-work{color:#73baff;background:#192f4a}.s-done{color:var(--green);background:#17372f}.s-critical{color:var(--red);background:#3b202b}
+.side-stack{display:grid;gap:16px;align-content:start}.fleet-row{margin:16px 0}.fleet-label{display:flex;justify-content:space-between;margin-bottom:7px;font-size:12px}.track{height:7px;background:#25334b;border-radius:99px;overflow:hidden}.fill{height:100%;border-radius:99px;background:var(--blue)}.fill.green{background:var(--green)}.fill.amber{background:var(--amber)}
+.deadline{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #223149}.deadline:last-child{border-bottom:0}.datebox{width:43px;height:46px;flex-shrink:0;border:1px solid #334663;background:#16243a;border-radius:9px;display:grid;place-content:center;text-align:center}.datebox b{font-size:16px;line-height:1.1}.datebox span{font-size:9px;color:var(--muted);text-transform:uppercase}.deadline strong{font-size:12px;display:block}.deadline small{font-size:11px;color:var(--muted)}
+.searchbar{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:#101b2e;border-radius:10px;padding:0 13px;margin-bottom:18px}.searchbar input{border:0;outline:0;background:transparent;color:var(--text);width:100%;padding:13px 0}.searchbar span{color:var(--muted)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.toolbar input,.toolbar select,.field input,.field select,.field textarea{background:#0e182a;color:var(--text);border:1px solid #2b3b56;border-radius:8px;padding:10px 11px;outline:none}.toolbar input:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue)}.toolbar input{min-width:230px;flex:1}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.field{display:grid;gap:7px}.field label{font-size:12px;color:#b8c7dd;font-weight:700}.field.full{grid-column:1/-1}.field textarea{min-height:90px;resize:vertical}.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.empty{padding:28px;text-align:center;color:var(--muted)}.notice{border:1px solid #5d4c29;background:#2b2519;color:#f4d18a;padding:12px 14px;border-radius:10px;font-size:12px;margin-bottom:18px}
+.toast{position:fixed;right:22px;bottom:22px;background:#15372f;border:1px solid #2b806b;color:#c6ffed;padding:13px 17px;border-radius:10px;box-shadow:0 10px 35px #0007;z-index:10;display:none}
+.mobile-menu{display:none}
+
+.component-results{margin-top:16px}.config-box{display:grid;grid-template-columns:1fr 1fr;gap:12px}.config-box .field.full{grid-column:1/-1}.config-status{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}.config-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#7889a5}.config-status.ok{color:var(--green)}.config-status.ok:before{background:var(--green)}.component-detail{white-space:normal;min-width:180px;max-width:320px}.component-pn{font-weight:800;color:#b9dcff}.small-action{padding:7px 10px;font-size:11px}
+@media(max-width:700px){.config-box{grid-template-columns:1fr}.config-box .field.full{grid-column:auto}}
+
+@media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.content{padding:22px 20px}.topbar{padding:0 20px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
+@media(max-width:700px){.app{display:block}.sidebar{display:none;position:fixed;z-index:8;inset:0 auto 0 0;width:260px;box-shadow:15px 0 50px #0009}.sidebar.open{display:flex}.topbar{height:64px;padding:0 15px}.mobile-menu{display:inline-block}.content{padding:20px 14px}.pagehead{display:block}.pagehead h1{font-size:24px}.pagehead .actions{margin-top:15px}.kpis{gap:10px}.card{padding:14px}.kpi-num{font-size:25px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.badge-demo{display:none}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="brand"><div class="brand-icon">R</div><div><strong>RailTech 360</strong><small>Maintenance intelligence</small></div></div>
+  <div><div class="nav-label">WORKSPACE</div><nav class="nav" id="nav">
+    <button class="active" data-page="dashboard"><span class="ico">◫</span>Dashboard</button>
+    <button data-page="flotta"><span class="ico">🚄</span>Flotta</button>
+    <button data-page="interventi"><span class="ico">🔧</span>Interventi</button>
+    <button data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
+    <button data-page="diagnostica"><span class="ico">⌁</span>Diagnostica</button>
+    <button data-page="documentazione"><span class="ico">▤</span>Documentazione</button>
+    <button data-page="scadenze"><span class="ico">◷</span>Scadenze</button>
+    <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
+    <button data-page="report"><span class="ico">▥</span>Report</button>
+    <button data-page="tecnici"><span class="ico">♙</span>Tecnici</button>
+  </nav></div>
+  <div class="side-bottom"><b>● Ambiente dimostrativo</b><p>Dati di esempio salvati in questo browser. Non collegato a sistemi aziendali.</p></div>
+</aside>
+<main>
+<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="btn mobile-menu" id="menuBtn">☰</button><div class="crumb">Workspace <span style="padding:0 7px">/</span><span id="crumbCurrent">Dashboard</span></div></div><div class="top-actions"><span class="badge-demo">DEMO · DATI FITTIZI</span><div class="avatar">IT</div></div></header>
+<div class="content" id="content"></div>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const initial = {
+  interventi:[
+    {id:"INT-0268",treno:"ETR1000 · 102",cassa:"M6",titolo:"Sostituzione modulo CCM1",tecnico:"Marco R.",data:"2026-10-30",stato:"In lavorazione",esito:"",note:"Verifica funzionale al termine della sostituzione."},
+    {id:"INT-0267",treno:"ETR1000 · 108",cassa:"TT7",titolo:"Verifica segnale diagnostico",tecnico:"Luca B.",data:"2026-10-30",stato:"Da verificare",esito:"",note:"Analisi della sequenza eventi."},
+    {id:"INT-0266",treno:"ETR1000 · 096",cassa:"M3",titolo:"Controllo apparato antincendio",tecnico:"Sara P.",data:"2026-10-29",stato:"Completato",esito:"Regolare",note:"Controllo completato."},
+    {id:"INT-0265",treno:"ETR1000 · 102",cassa:"M3",titolo:"Controllo circuito ausiliario",tecnico:"Marco R.",data:"2026-10-28",stato:"Completato",esito:"Regolare",note:"Dati dimostrativi."}
+  ],
+  openitem:[
+    {id:"OI-014",treno:"ETR1000 · 102",apparato:"HVAC",titolo:"Anomalia intermittente ventilazione",priorita:"Media",stato:"Aperto",data:"2026-10-29"},
+    {id:"OI-013",treno:"ETR1000 · 108",apparato:"Diagnostica",titolo:"Segnale da verificare in esercizio",priorita:"Alta",stato:"In analisi",data:"2026-10-28"},
+    {id:"OI-012",treno:"ETR1000 · 096",apparato:"Antincendio",titolo:"Controllo documentale da completare",priorita:"Bassa",stato:"Aperto",data:"2026-10-26"}
+  ],
+  scadenze:[
+    {id:"SC-031",titolo:"Controllo impianto HVAC",treno:"ETR1000 · 102",data:"2026-11-02",responsabile:"Marco R."},
+    {id:"SC-030",titolo:"Verifica apparato antincendio",treno:"ETR1000 · 108",data:"2026-11-04",responsabile:"Sara P."},
+    {id:"SC-029",titolo:"Revisione componente",treno:"ETR1000 · 096",data:"2026-11-06",responsabile:"Luca B."}
+  ],
+  tecnici:["Marco R.","Luca B.","Sara P.","Andrea C."]
+};
+let data;
+try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClone(initial); } catch(e){data=structuredClone(initial)}
+function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
+let currentPage="dashboard";
+const content=document.getElementById("content");
+const pages={dashboard:"Dashboard",flotta:"Flotta",interventi:"Interventi",cercaComponente:"Cerca componente",diagnostica:"Diagnostica",documentazione:"Documentazione",scadenze:"Scadenze",openitem:"Open Item",report:"Report",tecnici:"Tecnici"};
+function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
+function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
+function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
+function head(title,sub,buttons=""){return `<div class="pagehead"><div><div class="eyebrow">RAILTECH 360 / ETR1000</div><h1>${title}</h1><p>${sub}</p></div><div class="actions">${buttons}</div></div>`}
+function kpi(label,num,icon,foot){return `<div class="card"><div class="kpi-top"><span>${label}</span><span class="kpi-icon">${icon}</span></div><div class="kpi-num">${num}</div><div class="kpi-foot">${foot}</div></div>`}
+function searchbar(placeholder="Cerca per treno, componente, matricola o guasto…"){return `<div class="searchbar"><span>⌕</span><input id="globalSearch" placeholder="${placeholder}"><span>↵</span></div>`}
+function table(headers,rows){return `<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${rows||`<tr><td colspan="${headers.length}" class="empty">Nessun elemento trovato</td></tr>`}</tbody></table></div>`}
+function dashboard(){let open=data.interventi.filter(x=>x.stato!=="Completato").length;return head("Dashboard manutenzione","Panoramica operativa · Flotta ETR1000",`<button class="btn" onclick="go('report')">Esporta / report</button><button class="btn primary" onclick="newIntervento()">＋ Nuovo intervento</button>`)+
+`<div class="grid kpis">${kpi("Treni monitorati","12","🚄",'<span>●</span> Flotta dimostrativa')}${kpi("Interventi aperti",String(open).padStart(2,"0"),"🔧","Attività non completate")}${kpi("Open Item",String(data.openitem.length).padStart(2,"0"),"⚠","Anomalie da seguire")}${kpi("Scadenze in 7 giorni",String(data.scadenze.length).padStart(2,"0"),"◷","Prossime attività pianificate")}</div>
+<div class="grid columns"><section class="card"><div class="card-head"><h2>Attività recenti</h2><button class="linkbtn" onclick="go('interventi')">Vedi tutti →</button></div>${table(["Intervento / treno","Attività","Stato","Data"],data.interventi.slice(0,4).map(x=>`<tr><td><div class="main-cell">${x.id}</div><div class="sub-cell">${x.treno} · Cassa ${x.cassa}</div></td><td>${x.titolo}</td><td>${pill(x.stato)}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section>
+<div class="side-stack"><section class="card"><div class="card-head"><h2>Stato flotta</h2><span class="muted tiny">12 unità</span></div><div class="fleet-row"><div class="fleet-label"><span>Operativo</span><b>9 <span class="muted">/ 12</span></b></div><div class="track"><div class="fill green" style="width:75%"></div></div></div><div class="fleet-row"><div class="fleet-label"><span>In manutenzione</span><b>2 <span class="muted">/ 12</span></b></div><div class="track"><div class="fill amber" style="width:17%"></div></div></div><div class="fleet-row"><div class="fleet-label"><span>Da verificare</span><b>1 <span class="muted">/ 12</span></b></div><div class="track"><div class="fill" style="width:8%"></div></div></div><p class="muted tiny">Valori dimostrativi, non collegati a una flotta reale.</p></section>
+<section class="card"><div class="card-head"><h2>Scadenze prossime</h2><button class="linkbtn" onclick="go('scadenze')">Tutte →</button></div>${data.scadenze.slice().sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3).map(x=>`<div class="deadline"><div class="datebox"><b>${new Date(x.data+"T12:00:00").getDate()}</b><span>${new Date(x.data+"T12:00:00").toLocaleDateString("it-IT",{month:"short"})}</span></div><div><strong>${x.titolo}</strong><small>${x.treno} · ${x.responsabile}</small></div></div>`).join("")||'<p class="muted">Nessuna scadenza inserita.</p>'}</section></div></div>`}
+function interventiPage(){let rows=data.interventi.map((x,i)=>`<tr><td><div class="main-cell">${x.id}</div><div class="sub-cell">${x.treno} · ${x.cassa}</div></td><td>${x.titolo}</td><td>${x.tecnico}</td><td>${fmt(x.data)}</td><td>${pill(x.stato)}</td><td><button class="btn" onclick="editIntervento(${i})">Apri</button></td></tr>`).join("");return head("Interventi","Registro delle lavorazioni e storico manutentivo",`<button class="btn primary" onclick="newIntervento()">＋ Nuovo intervento</button>`)+searchbar("Cerca ID, treno, cassa, attività o tecnico…")+`<section class="card">${table(["ID / Treno","Attività","Tecnico","Data","Stato",""],rows)}</section>`}
+function flottaPage(){let trains=[["102","Operativo","12 Ott 2026"],["108","In manutenzione","30 Ott 2026"],["096","Operativo","29 Ott 2026"],["114","Da verificare","28 Ott 2026"],["121","Operativo","25 Ott 2026"],["105","Operativo","24 Ott 2026"]];return head("Flotta","Vista dimostrativa dei treni e delle unità manutentive",`<button class="btn" onclick="toast('La gestione completa della flotta sarà aggiunta nella prossima fase.')">＋ Aggiungi treno</button>`)+searchbar("Cerca numero treno o stato…")+`<section class="card">${table(["Treno","Serie","Ultimo aggiornamento","Stato","Azioni"],trains.map(t=>`<tr><td><div class="main-cell">ETR1000 · ${t[0]}</div><div class="sub-cell">8 casse · configurazione demo</div></td><td>Frecciarossa</td><td>${t[2]}</td><td>${pill(t[1])}</td><td><button class="btn" onclick="toast('Scheda treno ${t[0]}: dati dimostrativi.')">Scheda</button></td></tr>`).join(""))}</section><p class="muted tiny" style="margin-top:12px">Le unità mostrate sono esempi e non rappresentano lo stato reale di alcun treno.</p>`}
+function openitemPage(){return head("Open Item","Anomalie aperte, priorità e follow-up",`<button class="btn primary" onclick="newOpenItem()">＋ Nuovo Open Item</button>`)+searchbar("Cerca anomalia, apparato o treno…")+`<section class="card">${table(["ID / Treno","Anomalia","Apparato","Priorità","Stato","Data"],data.openitem.map(x=>`<tr><td><div class="main-cell">${x.id}</div><div class="sub-cell">${x.treno}</div></td><td>${x.titolo}</td><td>${x.apparato}</td><td>${pill(x.priorita)}</td><td>${pill(x.stato)}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section>`}
+function scadenzePage(){return head("Scadenze","Pianificazione delle attività manutentive",`<button class="btn primary" onclick="newScadenza()">＋ Nuova scadenza</button>`)+`<section class="card">${table(["ID","Attività","Treno","Responsabile","Data"],data.scadenze.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td><b>${x.id}</b></td><td>${x.titolo}</td><td>${x.treno}</td><td>${x.responsabile}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section>`}
+function diagnosticaPage(){return head("Diagnostica","Area di prova per l'importazione e l'analisi dei log")+
+`<div class="notice">Questa demo non esegue ancora diagnosi automatica e non interpreta file ferroviari reali. Il modulo verrà collegato dopo aver definito i formati supportati e le regole di analisi.</div><div class="grid columns"><section class="card"><div class="card-head"><h2>Importa un log</h2><span class="muted tiny">CSV / TXT / LOG</span></div><p class="muted">Seleziona un file di esempio per simulare il flusso di caricamento. In questa versione il contenuto non viene inviato a un server.</p><label class="btn primary" style="display:inline-block">Seleziona file<input type="file" id="logFile" accept=".csv,.txt,.log" hidden></label><div id="fileInfo" class="muted tiny" style="margin-top:14px">Nessun file selezionato</div></section><section class="card"><div class="card-head"><h2>Flusso di analisi previsto</h2></div>${["1. Verifica del formato e dei timestamp","2. Normalizzazione dei segnali","3. Timeline cronologica degli eventi","4. Ricerca di correlazioni e anomalie","5. Rapporto con evidenze verificabili"].map(x=>`<div class="deadline"><div class="kpi-icon">✓</div><div>${x}</div></div>`).join("")}</section></div>`}
+function documentazionePage(){return head("Documentazione","Punto di accesso futuro a manuali, PDF e schede SR",`<button class="btn primary" onclick="toast('Archivio documentale non ancora collegato.')">＋ Aggiungi documento</button>`)+`<div class="notice">Nella versione iniziale non è collegato alcun archivio aziendale. La prossima fase potrà aggiungere caricamento, indicizzazione e ricerca full-text sui documenti autorizzati.</div><section class="card"><div class="card-head"><h2>Archivio documentale</h2><span class="muted tiny">ANTEPRIMA</span></div>${table(["Categoria","Contenuto previsto","Stato"],[["Schede SR","Ricerca per codice, titolo e apparato",pill("Da configurare")],["Manuali tecnici","PDF e procedure manutentive",pill("Da configurare")],["Log diagnostici","File associati agli interventi",pill("Da configurare")]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join(""))}</section>`}
+function reportPage(){return head("Report","Riepilogo dei dati dimostrativi",`<button class="btn primary" onclick="exportCSV()">↓ Esporta interventi CSV</button>`)+`<div class="grid kpis">${kpi("Interventi registrati",data.interventi.length,"🔧","Nel database locale demo")}${kpi("Completati",data.interventi.filter(x=>x.stato==="Completato").length,"✓","Interventi con stato completato")}${kpi("Open Item",data.openitem.length,"⚠","Anomalie non archiviate")}${kpi("Tecnici demo",data.tecnici.length,"♙","Elenco iniziale")}</div><section class="card"><h2>Esportazione</h2><p class="muted">Scarica il registro degli interventi di questa demo in formato CSV, apribile con Excel. Non include dati provenienti da sistemi aziendali.</p><button class="btn primary" onclick="exportCSV()">Esporta CSV</button></section>`}
+function tecniciPage(){return head("Tecnici","Elenco dimostrativo dei tecnici",`<button class="btn primary" onclick="newTecnico()">＋ Aggiungi tecnico</button>`)+`<section class="card">${table(["Tecnico","Ruolo","Stato"],data.tecnici.map((t,i)=>`<tr><td><div class="main-cell">${t}</div></td><td>${i===0?"Responsabile demo":"Tecnico manutentore"}</td><td>${pill("Attivo")}</td></tr>`).join(""))}</section><p class="muted tiny" style="margin-top:12px">I ruoli mostrati non applicano ancora permessi reali. L'autenticazione sarà implementata prima di qualsiasi uso condiviso.</p>`}
+
+function cercaComponentePage(){
+  const cfg=getSupabaseConfig();
+  return head("Cerca componente","Ricerca nel catalogo ricambi e componenti su Supabase",
+    `<button class="btn" onclick="openSupabaseConfig()">⚙ Configura database</button>`) +
+    `<div class="notice">Questa sezione legge la tabella <b>magazzino</b> di Supabase. Usa solo la chiave pubblica (anon/publishable) e configura le policy RLS per consentire esclusivamente le operazioni autorizzate.</div>
+    <section class="card">
+      <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
+      <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, assieme, IDRA o descrizione…" autocomplete="off"><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
+      <div class="muted tiny">Campi cercati: elemento, assieme, componente, part number, codici ricambio, IDRA e descrizione. La ricerca usa i nomi effettivi delle colonne Supabase, inclusi spazi e maiuscole.</div>
+      <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca.</div>
+      <div id="componentResults" class="component-results"></div>
+    </section>
+    <section class="card" style="margin-top:16px"><div class="card-head"><h2>Campi catalogo attesi</h2><span class="muted tiny">Tabella: magazzino</span></div>
+    <div class="muted tiny">id · ELEMENTO · ASSIEME · COMPONENTE · Part_Number · Pn_Ricambio · PnRicambio2 · Pn_Consignment_Stoc · Pn_CS2 · IDRA TI · Descrizione_TI · Aggiornato al</div></section>`;
+}
+function getSupabaseConfig(){
+  const defaultConfig={url:"https://nlsezrwjvhxvsbycxlxd.supabase.co",key:"sb_publishable_fpaQCHaVxVoHU_x7hhuLkg_zdhiHlUl"};
+  try{
+    const saved=JSON.parse(localStorage.getItem("railtech360_supabase_config"));
+    if(saved && saved.url && saved.key) return saved;
+    localStorage.setItem("railtech360_supabase_config",JSON.stringify(defaultConfig));
+    return defaultConfig;
+  }catch(e){return defaultConfig}
+}
+function openSupabaseConfig(){
+  const c=getSupabaseConfig();
+  content.innerHTML=head("Connessione Supabase","Configura l'accesso al catalogo componenti")+
+  `<div class="notice">Inserisci il Project URL e la chiave pubblica anon/publishable del progetto. <b>Non inserire mai la service_role key</b> in una web app nel browser.</div>
+  <section class="card"><form id="supabaseForm"><div class="config-box">
+  <div class="field full"><label>Supabase Project URL</label><input name="url" required type="url" placeholder="https://xxxxxxxx.supabase.co" value="${escapeHtml(c.url)}"></div>
+  <div class="field full"><label>Anon / Publishable key</label><input name="key" required autocomplete="off" placeholder="sb_publishable_… oppure anon JWT" value="${escapeHtml(c.key)}"></div>
+  </div><div class="form-actions"><button type="button" class="btn" onclick="go('cercaComponente')">Annulla</button><button type="button" class="btn" onclick="clearSupabaseConfig()">Rimuovi configurazione</button><button class="btn primary">Salva e verifica</button></div></form>
+  <p class="muted tiny" style="margin-top:16px">La configurazione viene salvata solo nel localStorage di questo browser. Per un'app condivisa, la chiave pubblica può essere usata solo insieme a policy RLS corrette.</p></section>`;
+  document.getElementById("supabaseForm").addEventListener("submit",async e=>{
+    e.preventDefault();const f=new FormData(e.target);const c={url:String(f.get("url")).trim().replace(/\/$/,""),key:String(f.get("key")).trim()};
+    localStorage.setItem("railtech360_supabase_config",JSON.stringify(c));
+    try{
+      if(!window.supabase)throw new Error("Libreria Supabase non caricata. Controlla la connessione Internet.");
+      const client=window.supabase.createClient(c.url,c.key);
+      const {error}=await client.from("magazzino").select("id").limit(1);
+      if(error)throw error;
+      toast("Connessione a Supabase verificata.");go("cercaComponente");
+    }catch(err){toast("Configurazione salvata, ma verifica fallita: "+(err.message||"controlla URL, chiave e policy RLS"));go("cercaComponente");}
+  });
+}
+function clearSupabaseConfig(){localStorage.removeItem("railtech360_supabase_config");toast("Configurazione Supabase rimossa.");go("cercaComponente")}
+function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function searchComponents(){
+  const msg=document.getElementById("componentMessage"),out=document.getElementById("componentResults"),input=document.getElementById("componentQuery");
+  const q=input?.value.trim();out.innerHTML="";
+  if(!q){msg.textContent="Inserisci un termine di ricerca.";return}
+  const cfg=getSupabaseConfig();
+  if(!cfg.url||!cfg.key){msg.innerHTML='Database non configurato. Premi <b>Configura database</b> per inserire Project URL e chiave pubblica.';return}
+  if(!window.supabase){msg.textContent="Impossibile caricare la libreria Supabase. Verifica la connessione Internet.";return}
+  msg.textContent="Ricerca in corso…";
+  document.getElementById("componentSearchBtn").disabled=true;
+  try{
+    const client=window.supabase.createClient(cfg.url,cfg.key);
+    const limit=Number(document.getElementById("componentLimit").value)||25;
+    const columns=["ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_Consignment_Stoc","Pn_CS2","IDRA TI","Descrizione_TI","Aggiornato al"];
+    const norm=v=>String(v??"").toLocaleLowerCase("it-IT");
+    const needle=norm(q);
+    let matches=[],start=0,step=1000;
+    // select(*) evita problemi con nomi di colonna che contengono spazi o maiuscole.
+    // La ricerca viene eseguita sui record letti da Supabase, senza rinominare le colonne.
+    while(matches.length<limit){
+      const {data:batch,error}=await client.from("magazzino").select("*").order("id").range(start,start+step-1);
+      if(error)throw error;
+      if(!batch||batch.length===0)break;
+      for(const r of batch){
+        if(columns.some(c=>norm(r[c]).includes(needle))){matches.push(r);if(matches.length>=limit)break;}
+      }
+      if(batch.length<step)break;
+      start+=step;
+    }
+    if(!matches.length){msg.textContent="Nessun componente trovato per “"+q+"”.";return}
+    msg.textContent=`Trovati ${matches.length} risultati (limite ${limit}).`;
+    out.innerHTML=table(["Elemento / Assieme","Componente / Descrizione","Part number","Codici ricambio","IDRA TI","Aggiornato al"],matches.map(r=>`<tr>
+      <td><div class="main-cell">${escapeHtml(r["ELEMENTO"]||"—")}</div><div class="sub-cell">${escapeHtml(r["ASSIEME"]||"—")}</div></td>
+      <td class="component-detail"><div class="main-cell">${escapeHtml(r["COMPONENTE"]||"—")}</div><div class="sub-cell">${escapeHtml(r["Descrizione_TI"]||"")}</div></td>
+      <td><span class="component-pn">${escapeHtml(r["Part_Number"]||"—")}</span></td>
+      <td>${[r["Pn_Ricambio"],r["PnRicambio2"],r["Pn_Consignment_Stoc"],r["Pn_CS2"]].filter(Boolean).map(escapeHtml).join("<br>")||"—"}</td>
+      <td>${escapeHtml(r["IDRA TI"]||"—")}</td><td>${escapeHtml(r["Aggiornato al"]||"—")}</td></tr>`).join(""));
+  }catch(err){
+    msg.innerHTML=`<b>Errore durante la ricerca.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Controlla URL, chiave pubblica, nomi delle colonne e policy SELECT (RLS) su magazzino.</span>`;
+  }finally{const b=document.getElementById("componentSearchBtn");if(b)b.disabled=false}
+}
+
+function fmt(d){if(!d)return"—";return new Date(d+"T12:00:00").toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={dashboard,flotta:flottaPage,interventi:interventiPage,cercaComponente:cercaComponentePage,diagnostica:diagnosticaPage,documentazione:documentazionePage,scadenze:scadenzePage,openitem:openitemPage,report:reportPage,tecnici:tecniciPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")});const lf=document.getElementById("logFile");if(lf)lf.addEventListener("change",()=>{document.getElementById("fileInfo").textContent=lf.files[0]?`${lf.files[0].name} · ${(lf.files[0].size/1024).toFixed(1)} KB · selezionato localmente`:"Nessun file selezionato"})}
+function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0)}
+document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
+document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
+function newIntervento(){content.innerHTML=head("Nuovo intervento","Registra una lavorazione nel registro locale demo")+`<section class="card"><form id="intForm"><div class="form-grid">
+<div class="field"><label>Numero treno *</label><input name="treno" required placeholder="Es. ETR1000 · 102"></div>
+<div class="field"><label>Cassa / apparato *</label><input name="cassa" required placeholder="Es. M6 / CCM1"></div>
+<div class="field full"><label>Descrizione attività *</label><input name="titolo" required placeholder="Descrivi la lavorazione"></div>
+<div class="field"><label>Tecnico assegnato</label><select name="tecnico">${data.tecnici.map(t=>`<option>${t}</option>`).join("")}</select></div>
+<div class="field"><label>Data intervento *</label><input type="date" name="data" required value="${new Date().toISOString().slice(0,10)}"></div>
+<div class="field"><label>Stato</label><select name="stato"><option>Da verificare</option><option>In lavorazione</option><option>Completato</option></select></div>
+<div class="field"><label>Esito</label><select name="esito"><option value="">Non definito</option><option>Regolare</option><option>Non regolare</option><option>Da approfondire</option></select></div>
+<div class="field full"><label>Note tecniche</label><textarea name="note" placeholder="Attività svolte, riscontri ed eventuali verifiche…"></textarea></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('interventi')">Annulla</button><button class="btn primary">Salva intervento</button></div></form></section>`;
+document.getElementById("intForm").addEventListener("submit",e=>{e.preventDefault();let f=new FormData(e.target);data.interventi.unshift({id:"INT-"+String(269+data.interventi.length-4).padStart(4,"0"),...Object.fromEntries(f)});save();go("interventi");toast("Intervento salvato in questo browser.")})}
+function editIntervento(i){let x=data.interventi[i];content.innerHTML=head(x.id,"Dettaglio intervento",`<button class="btn" onclick="go('interventi')">← Torna al registro</button>`)+`<section class="card"><div class="grid columns"><div><div class="eyebrow">ATTIVITÀ</div><h2>${x.titolo}</h2><p class="muted">${x.treno} · Cassa ${x.cassa}</p></div><div><div class="muted tiny">STATO</div>${pill(x.stato)}<p class="muted tiny" style="margin-top:12px">${fmt(x.data)} · ${x.tecnico}</p></div></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><p><b>Esito:</b> ${x.esito||"Non definito"}</p><p><b>Note:</b> ${x.note||"Nessuna nota"}</p><button class="btn primary" onclick="setCompleted('${x.id}')">Segna completato</button></section>`}
+function setCompleted(id){let x=data.interventi.find(x=>x.id===id);if(x){x.stato="Completato";if(!x.esito)x.esito="Da confermare";save();go("interventi");toast("Stato aggiornato nella demo.")}}
+function newOpenItem(){content.innerHTML=head("Nuovo Open Item","Registra un'anomalia da seguire")+`<section class="card"><form id="oiForm"><div class="form-grid"><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Apparato *</label><input name="apparato" required placeholder="HVAC, CCM, antincendio…"></div><div class="field full"><label>Descrizione anomalia *</label><input name="titolo" required></div><div class="field"><label>Priorità</label><select name="priorita"><option>Bassa</option><option selected>Media</option><option>Alta</option></select></div><div class="field"><label>Data</label><input type="date" name="data" value="${new Date().toISOString().slice(0,10)}"></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('openitem')">Annulla</button><button class="btn primary">Salva Open Item</button></div></form></section>`;document.getElementById("oiForm").addEventListener("submit",e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));data.openitem.unshift({id:"OI-"+String(15+data.openitem.length-3).padStart(3,"0"),...x,stato:"Aperto"});save();go("openitem");toast("Open Item salvato nella demo.")})}
+function newScadenza(){content.innerHTML=head("Nuova scadenza","Aggiungi un'attività pianificata")+`<section class="card"><form id="scForm"><div class="form-grid"><div class="field full"><label>Attività *</label><input name="titolo" required></div><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Responsabile</label><select name="responsabile">${data.tecnici.map(t=>`<option>${t}</option>`).join("")}</select></div><div class="field"><label>Data *</label><input type="date" name="data" required></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('scadenze')">Annulla</button><button class="btn primary">Salva scadenza</button></div></form></section>`;document.getElementById("scForm").addEventListener("submit",e=>{e.preventDefault();data.scadenze.push({id:"SC-"+String(32+data.scadenze.length-3).padStart(3,"0"),...Object.fromEntries(new FormData(e.target))});save();go("scadenze");toast("Scadenza salvata nella demo.")})}
+function newTecnico(){let n=prompt("Nome del tecnico (demo):");if(n&&n.trim()){data.tecnici.push(n.trim());save();go("tecnici");toast("Tecnico aggiunto nella demo.")}}
+function exportCSV(){let rows=[["ID","Treno","Cassa","Attività","Tecnico","Data","Stato","Esito","Note"],...data.interventi.map(x=>[x.id,x.treno,x.cassa,x.titolo,x.tecnico,x.data,x.stato,x.esito,x.note])];let csv=rows.map(r=>r.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(";")).join("\r\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}));a.download="railtech360_interventi_demo.csv";a.click();URL.revokeObjectURL(a.href);toast("CSV esportato.")}
+render();
+</script>
+</body>
+</html>
