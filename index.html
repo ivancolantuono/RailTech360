@@ -87,7 +87,11 @@ function dashboard(){let open=data.interventi.filter(x=>x.stato!=="Completato").
 <section class="card"><div class="card-head"><h2>Scadenze prossime</h2><button class="linkbtn" onclick="go('scadenze')">Tutte →</button></div>${data.scadenze.slice().sort((a,b)=>a.data.localeCompare(b.data)).slice(0,3).map(x=>`<div class="deadline"><div class="datebox"><b>${new Date(x.data+"T12:00:00").getDate()}</b><span>${new Date(x.data+"T12:00:00").toLocaleDateString("it-IT",{month:"short"})}</span></div><div><strong>${x.titolo}</strong><small>${x.treno} · ${x.responsabile}</small></div></div>`).join("")||'<p class="muted">Nessuna scadenza inserita.</p>'}</section></div></div>`}
 function interventiPage(){let rows=data.interventi.map((x,i)=>`<tr><td><div class="main-cell">${x.id}</div><div class="sub-cell">${x.treno} · ${x.cassa}</div></td><td>${x.titolo}</td><td>${x.tecnico}</td><td>${fmt(x.data)}</td><td>${pill(x.stato)}</td><td><button class="btn" onclick="editIntervento(${i})">Apri</button></td></tr>`).join("");return head("Interventi","Registro delle lavorazioni e storico manutentivo",`<button class="btn primary" onclick="newIntervento()">＋ Nuovo intervento</button>`)+searchbar("Cerca ID, treno, cassa, attività o tecnico…")+`<section class="card">${table(["ID / Treno","Attività","Tecnico","Data","Stato",""],rows)}</section>`}
 function flottaPage(){let trains=[["102","Operativo","12 Ott 2026"],["108","In manutenzione","30 Ott 2026"],["096","Operativo","29 Ott 2026"],["114","Da verificare","28 Ott 2026"],["121","Operativo","25 Ott 2026"],["105","Operativo","24 Ott 2026"]];return head("Flotta","Vista dimostrativa dei treni e delle unità manutentive",`<button class="btn" onclick="toast('La gestione completa della flotta sarà aggiunta nella prossima fase.')">＋ Aggiungi treno</button>`)+searchbar("Cerca numero treno o stato…")+`<section class="card">${table(["Treno","Serie","Ultimo aggiornamento","Stato","Azioni"],trains.map(t=>`<tr><td><div class="main-cell">ETR1000 · ${t[0]}</div><div class="sub-cell">8 casse · configurazione demo</div></td><td>Frecciarossa</td><td>${t[2]}</td><td>${pill(t[1])}</td><td><button class="btn" onclick="toast('Scheda treno ${t[0]}: dati dimostrativi.')">Scheda</button></td></tr>`).join(""))}</section><p class="muted tiny" style="margin-top:12px">Le unità mostrate sono esempi e non rappresentano lo stato reale di alcun treno.</p>`}
-function openitemPage(){return head("Open Item","Anomalie aperte, priorità e follow-up",`<button class="btn primary" onclick="newOpenItem()">＋ Nuovo Open Item</button>`)+searchbar("Cerca anomalia, apparato o treno…")+`<section class="card">${table(["ID / Treno","Anomalia","Apparato","Priorità","Stato","Data"],data.openitem.map(x=>`<tr><td><div class="main-cell">${x.id}</div><div class="sub-cell">${x.treno}</div></td><td>${x.titolo}</td><td>${x.apparato}</td><td>${pill(x.priorita)}</td><td>${pill(x.stato)}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section><p class="muted tiny" style="margin-top:12px">Gli Open Item inseriti da questa schermata vengono salvati in questo browser; la sincronizzazione con Supabase non è ancora configurata.</p>`}
+function openitemPage(){
+  return head("Open Item","Anomalie registrate nel database condiviso",`<button class="btn" onclick="loadOpenItems()">↻ Aggiorna</button><button class="btn primary" onclick="newOpenItem()">＋ Nuovo Open Item</button>`)+
+  searchbar("Cerca treno, descrizione, cassa o impianto…")+
+  `<section class="card"><div id="openItemMessage" class="muted" style="padding:10px 0">Caricamento Open Item da Supabase…</div><div id="openItemResults"></div></section>`;
+}
 function scadenzePage(){return head("Scadenze","Pianificazione delle attività manutentive",`<button class="btn primary" onclick="newScadenza()">＋ Nuova scadenza</button>`)+`<section class="card">${table(["ID","Attività","Treno","Responsabile","Data"],data.scadenze.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td><b>${x.id}</b></td><td>${x.titolo}</td><td>${x.treno}</td><td>${x.responsabile}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section>`}
 function diagnosticaPage(){return head("Diagnostica","Area di prova per l'importazione e l'analisi dei log")+
 `<div class="notice">Questa demo non esegue ancora diagnosi automatica e non interpreta file ferroviari reali. Il modulo verrà collegato dopo aver definito i formati supportati e le regole di analisi.</div><div class="grid columns"><section class="card"><div class="card-head"><h2>Importa un log</h2><span class="muted tiny">CSV / TXT / LOG</span></div><p class="muted">Seleziona un file di esempio per simulare il flusso di caricamento. In questa versione il contenuto non viene inviato a un server.</p><label class="btn primary" style="display:inline-block">Seleziona file<input type="file" id="logFile" accept=".csv,.txt,.log" hidden></label><div id="fileInfo" class="muted tiny" style="margin-top:14px">Nessun file selezionato</div></section><section class="card"><div class="card-head"><h2>Flusso di analisi previsto</h2></div>${["1. Verifica del formato e dei timestamp","2. Normalizzazione dei segnali","3. Timeline cronologica degli eventi","4. Ricerca di correlazioni e anomalie","5. Rapporto con evidenze verificabili"].map(x=>`<div class="deadline"><div class="kpi-icon">✓</div><div>${x}</div></div>`).join("")}</section></div>`}
@@ -99,8 +103,7 @@ function cercaComponentePage(){
   const cfg=getSupabaseConfig();
   return head("Cerca componente","Ricerca nel catalogo ricambi e componenti su Supabase",
     `<button class="btn" onclick="openSupabaseConfig()">⚙ Configura database</button>`) +
-    `<div class="notice">Questa sezione legge la tabella <b>magazzino</b> di Supabase. Usa solo la chiave pubblica (anon/publishable) e configura le policy RLS per consentire esclusivamente le operazioni autorizzate.</div>
-    <section class="card">
+    `<section class="card">
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, assieme, IDRA o descrizione…" autocomplete="off"><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
       <div class="muted tiny">Campi cercati: elemento, assieme, componente, part number, codici ricambio, IDRA e descrizione. La ricerca usa i nomi effettivi delle colonne Supabase, inclusi spazi e maiuscole.</div>
@@ -185,7 +188,7 @@ async function searchComponents(){
 
 function fmt(d){if(!d)return"—";return new Date(d+"T12:00:00").toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"})}
 function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
-function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0)}
+function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
 function newIntervento(){content.innerHTML=head("Nuovo intervento","Registra una lavorazione nel registro locale demo")+`<section class="card"><form id="intForm"><div class="form-grid">
@@ -200,7 +203,56 @@ function newIntervento(){content.innerHTML=head("Nuovo intervento","Registra una
 document.getElementById("intForm").addEventListener("submit",e=>{e.preventDefault();let f=new FormData(e.target);data.interventi.unshift({id:"INT-"+String(269+data.interventi.length-4).padStart(4,"0"),...Object.fromEntries(f)});save();go("interventi");toast("Intervento salvato in questo browser.")})}
 function editIntervento(i){let x=data.interventi[i];content.innerHTML=head(x.id,"Dettaglio intervento",`<button class="btn" onclick="go('interventi')">← Torna al registro</button>`)+`<section class="card"><div class="grid columns"><div><div class="eyebrow">ATTIVITÀ</div><h2>${x.titolo}</h2><p class="muted">${x.treno} · Cassa ${x.cassa}</p></div><div><div class="muted tiny">STATO</div>${pill(x.stato)}<p class="muted tiny" style="margin-top:12px">${fmt(x.data)} · ${x.tecnico}</p></div></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><p><b>Esito:</b> ${x.esito||"Non definito"}</p><p><b>Note:</b> ${x.note||"Nessuna nota"}</p><button class="btn primary" onclick="setCompleted('${x.id}')">Segna completato</button></section>`}
 function setCompleted(id){let x=data.interventi.find(x=>x.id===id);if(x){x.stato="Completato";if(!x.esito)x.esito="Da confermare";save();go("interventi");toast("Stato aggiornato nella demo.")}}
-function newOpenItem(){content.innerHTML=head("Nuovo Open Item","Registra un'anomalia da seguire")+`<section class="card"><form id="oiForm"><div class="form-grid"><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Apparato *</label><input name="apparato" required placeholder="HVAC, CCM, antincendio…"></div><div class="field full"><label>Descrizione anomalia *</label><input name="titolo" required></div><div class="field"><label>Priorità</label><select name="priorita"><option>Bassa</option><option selected>Media</option><option>Alta</option></select></div><div class="field"><label>Data</label><input type="date" name="data" value="${new Date().toISOString().slice(0,10)}"></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('openitem')">Annulla</button><button class="btn primary">Salva Open Item</button></div></form></section>`;document.getElementById("oiForm").addEventListener("submit",e=>{e.preventDefault();let x=Object.fromEntries(new FormData(e.target));data.openitem.unshift({id:"OI-"+String(15+data.openitem.length-3).padStart(3,"0"),...x,stato:"Aperto"});save();go("openitem");toast("Open Item salvato in questo browser.")})}
+function newOpenItem(){
+  content.innerHTML=head("Nuovo Open Item","Registra un'anomalia nel database condiviso")+
+  `<section class="card"><form id="oiForm"><div class="form-grid">
+  <div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div>
+  <div class="field"><label>Cassa</label><input name="cassa" placeholder="M6, M3, TT7…"></div>
+  <div class="field"><label>Impianto / apparato</label><input name="impianto" placeholder="HVAC, CCM, antincendio…"></div>
+  <div class="field"><label>Stato</label><select name="stato"><option value="APERTO">APERTO</option><option value="IN LAVORAZIONE">IN LAVORAZIONE</option><option value="CHIUSO">CHIUSO</option></select></div>
+  <div class="field full"><label>Descrizione anomalia *</label><textarea name="descrizione" required placeholder="Descrivi il problema riscontrato…"></textarea></div>
+  <div class="field full"><label>Lavorazioni / interventi eseguiti</label><textarea name="lavorazioni" placeholder="Inserire gli interventi effettuati o da effettuare…"></textarea></div>
+  <div class="field"><label>Avanzamento</label><input name="avanzamento" placeholder="Es. 0%, in attesa ricambio…"></div>
+  <div class="field"><label>Utente / tecnico</label><input name="utente" placeholder="Nome tecnico (facoltativo)"></div>
+  </div><div class="form-actions"><button type="button" class="btn" onclick="go('openitem')">Annulla</button><button class="btn primary" id="saveOpenItemBtn">Salva Open Item</button></div></form></section>`;
+  document.getElementById("oiForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const btn=document.getElementById("saveOpenItemBtn");btn.disabled=true;btn.textContent="Salvataggio…";
+    const f=Object.fromEntries(new FormData(e.target));
+    const payload={treno:f.treno.trim(),descrizione:f.descrizione.trim(),stato:f.stato,utente:f.utente.trim()||null,lavorazioni:f.lavorazioni.trim()||null,cassa:f.cassa.trim()||null,impianto:f.impianto.trim()||null,avanzamento:f.avanzamento.trim()||null};
+    try{
+      const cfg=getSupabaseConfig();
+      if(!window.supabase)throw new Error("Libreria Supabase non caricata. Controlla la connessione Internet.");
+      const client=window.supabase.createClient(cfg.url,cfg.key);
+      const {error}=await client.from("open_item").insert(payload);
+      if(error)throw error;
+      toast("Open Item salvato su Supabase.");go("openitem");
+    }catch(err){toast("Salvataggio non riuscito: "+(err.message||String(err)));btn.disabled=false;btn.textContent="Salva Open Item";}
+  });
+}
+
+async function loadOpenItems(){
+  const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
+  if(!msg||!out)return;
+  msg.textContent="Caricamento Open Item da Supabase…";out.innerHTML="";
+  try{
+    if(!window.supabase)throw new Error("Libreria Supabase non caricata. Controlla la connessione Internet.");
+    const cfg=getSupabaseConfig();const client=window.supabase.createClient(cfg.url,cfg.key);
+    const {data:rows,error}=await client.from("open_item").select("*").order("data_creazione",{ascending:false}).limit(500);
+    if(error)throw error;
+    const list=rows||[];
+    if(!list.length){msg.textContent="Nessun Open Item presente nella tabella.";return;}
+    msg.textContent=`${list.length} Open Item caricati da Supabase.`;
+    out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il"],list.map(x=>`<tr>
+      <td><div class="main-cell">#${escapeHtml(x.id)}</div><div class="sub-cell">${escapeHtml(x.treno||"—")}</div></td>
+      <td style="white-space:normal;min-width:200px;max-width:360px">${escapeHtml(x.descrizione||"—")}</td>
+      <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
+      <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
+      <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td></tr>`).join(""));
+    const search=document.getElementById("globalSearch");
+    if(search)search.addEventListener("input",()=>{const q=search.value.toLocaleLowerCase("it-IT");out.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLocaleLowerCase("it-IT").includes(q)?"":"none");});
+  }catch(err){msg.innerHTML=`<b>Impossibile caricare gli Open Item.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Verifica che la tabella si chiami <b>open_item</b> e che Supabase consenta SELECT tramite le policy RLS.</span>`;}
+}
 function newScadenza(){content.innerHTML=head("Nuova scadenza","Aggiungi un'attività pianificata")+`<section class="card"><form id="scForm"><div class="form-grid"><div class="field full"><label>Attività *</label><input name="titolo" required></div><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Responsabile</label><select name="responsabile">${data.tecnici.map(t=>`<option>${t}</option>`).join("")}</select></div><div class="field"><label>Data *</label><input type="date" name="data" required></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('scadenze')">Annulla</button><button class="btn primary">Salva scadenza</button></div></form></section>`;document.getElementById("scForm").addEventListener("submit",e=>{e.preventDefault();data.scadenze.push({id:"SC-"+String(32+data.scadenze.length-3).padStart(3,"0"),...Object.fromEntries(new FormData(e.target))});save();go("scadenze");toast("Scadenza salvata nella demo.")})}
 function newTecnico(){let n=prompt("Nome del tecnico (demo):");if(n&&n.trim()){data.tecnici.push(n.trim());save();go("tecnici");toast("Tecnico aggiunto nella demo.")}}
 function exportCSV(){let rows=[["ID","Treno","Cassa","Attività","Tecnico","Data","Stato","Esito","Note"],...data.interventi.map(x=>[x.id,x.treno,x.cassa,x.titolo,x.tecnico,x.data,x.stato,x.esito,x.note])];let csv=rows.map(r=>r.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(";")).join("\r\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}));a.download="railtech360_interventi_demo.csv";a.click();URL.revokeObjectURL(a.href);toast("CSV esportato.")}
