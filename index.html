@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0b1220">
-<title>RailTech 360 | Manutenzione ferroviaria</title>
+<title>Railway Maintenance | Manutenzione ferroviaria</title>
 <style>
 :root{--bg:#0a1020;--panel:#111b2e;--panel2:#15223a;--line:#24334d;--text:#edf3ff;--muted:#94a5c2;--blue:#4ea1ff;--cyan:#49d4e8;--green:#42d6a0;--amber:#f4bd58;--red:#ff727e}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -38,7 +38,7 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 <body>
 <div class="app">
 <aside class="sidebar" id="sidebar">
-  <div class="brand"><div class="brand-icon">R</div><div><strong>RailTech 360</strong><small>Maintenance intelligence</small></div></div>
+  <div class="brand"><div class="brand-icon">R</div><div><strong>Railway Maintenance</strong><small>Maintenance intelligence</small></div></div>
   <div><div class="nav-label">WORKSPACE</div><nav class="nav" id="nav">
     <button class="active" data-page="dashboard"><span class="ico">◫</span>Dashboard</button>
     <button data-page="flotta"><span class="ico">🚄</span>Flotta</button>
@@ -88,7 +88,7 @@ const pages={dashboard:"Dashboard",flotta:"Flotta",interventi:"Interventi",cerca
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
-function head(title,sub,buttons=""){return `<div class="pagehead"><div><div class="eyebrow">RAILTECH 360 / ETR1000</div><h1>${title}</h1><p>${sub}</p></div><div class="actions">${buttons}</div></div>`}
+function head(title,sub,buttons=""){return `<div class="pagehead"><div><div class="eyebrow">RAILWAY MAINTENANCE / ETR1000</div><h1>${title}</h1><p>${sub}</p></div><div class="actions">${buttons}</div></div>`}
 function kpi(label,num,icon,foot){return `<div class="card"><div class="kpi-top"><span>${label}</span><span class="kpi-icon">${icon}</span></div><div class="kpi-num">${num}</div><div class="kpi-foot">${foot}</div></div>`}
 function searchbar(placeholder="Cerca per treno, componente, matricola o guasto…"){return `<div class="searchbar"><span>⌕</span><input id="globalSearch" placeholder="${placeholder}"><span>↵</span></div>`}
 function table(headers,rows){return `<div class="table-wrap"><table><thead><tr>${headers.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${rows||`<tr><td colspan="${headers.length}" class="empty">Nessun elemento trovato</td></tr>`}</tbody></table></div>`}
