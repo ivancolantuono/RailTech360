@@ -116,7 +116,7 @@ function interventiPage(){let rows=data.interventi.map((x,i)=>`<tr><td><div clas
 function flottaPage(){let trains=[["102","Operativo","12 Ott 2026"],["108","In manutenzione","30 Ott 2026"],["096","Operativo","29 Ott 2026"],["114","Da verificare","28 Ott 2026"],["121","Operativo","25 Ott 2026"],["105","Operativo","24 Ott 2026"]];return head("Flotta","Vista dimostrativa dei treni e delle unità manutentive",`<button class="btn" onclick="toast('La gestione completa della flotta sarà aggiunta nella prossima fase.')">＋ Aggiungi treno</button>`)+searchbar("Cerca numero treno o stato…")+`<section class="card">${table(["Treno","Serie","Ultimo aggiornamento","Stato","Azioni"],trains.map(t=>`<tr><td><div class="main-cell">ETR1000 · ${t[0]}</div><div class="sub-cell">8 casse · configurazione demo</div></td><td>Frecciarossa</td><td>${t[2]}</td><td>${pill(t[1])}</td><td><button class="btn" onclick="toast('Scheda treno ${t[0]}: dati dimostrativi.')">Scheda</button></td></tr>`).join(""))}</section><p class="muted tiny" style="margin-top:12px">Le unità mostrate sono esempi e non rappresentano lo stato reale di alcun treno.</p>`}
 function openitemPage(){
   return head("Open Item","Anomalie registrate nel database condiviso",`<button class="btn" onclick="loadOpenItems()">↻ Aggiorna</button><button class="btn primary" onclick="newOpenItem()">＋ Nuovo Open Item</button>`)+
-  searchbar("Cerca treno, descrizione, cassa o impianto…")+
+  `<section class="card" style="margin-bottom:16px"><div class="card-head"><h2>Filtra Open Item</h2><button class="btn small-action" onclick="clearOpenItemFilters()">Azzera filtri</button></div><div class="toolbar"><input id="oiFilterTreno" placeholder="Filtra per treno…" oninput="renderOpenItemsFiltered()"><input id="oiFilterCassa" placeholder="Filtra per cassa…" oninput="renderOpenItemsFiltered()"><input id="oiFilterImpianto" placeholder="Filtra per impianto…" oninput="renderOpenItemsFiltered()"></div></section>`+
   `<section class="card"><div id="openItemMessage" class="muted" style="padding:10px 0">Caricamento Open Item da Supabase…</div><div id="openItemResults"></div></section>`;
 }
 function scadenzePage(){return head("Scadenze","Pianificazione delle attività manutentive",`<button class="btn primary" onclick="newScadenza()">＋ Nuova scadenza</button>`)+`<section class="card">${table(["ID","Attività","Treno","Responsabile","Data"],data.scadenze.slice().sort((a,b)=>a.data.localeCompare(b.data)).map(x=>`<tr><td><b>${x.id}</b></td><td>${x.titolo}</td><td>${x.treno}</td><td>${x.responsabile}</td><td>${fmt(x.data)}</td></tr>`).join(""))}</section>`}
@@ -129,7 +129,7 @@ function tecniciPage(){return head("Tecnici","Elenco dimostrativo dei tecnici",`
 function cercaComponentePage(){
   const cfg=getSupabaseConfig();
   return head("Cerca componente","Ricerca nel catalogo ricambi e componenti su Supabase",
-    `<button class="btn" onclick="openSupabaseConfig()">⚙ Configura database</button>`) +
+    ``) +
     `<section class="card">
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, assieme, IDRA o descrizione…" autocomplete="off"><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
@@ -340,6 +340,26 @@ function newOpenItem(){
   });
 }
 
+let openItemsCache=[];
+function clearOpenItemFilters(){
+  ["oiFilterTreno","oiFilterCassa","oiFilterImpianto"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  renderOpenItemsFiltered();
+}
+function renderOpenItemsFiltered(){
+  const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
+  if(!msg||!out)return;
+  const norm=v=>String(v??"").trim().toLocaleLowerCase("it-IT");
+  const treno=norm(document.getElementById("oiFilterTreno")?.value),cassa=norm(document.getElementById("oiFilterCassa")?.value),impianto=norm(document.getElementById("oiFilterImpianto")?.value);
+  const list=openItemsCache.filter(x=>(!treno||norm(x.treno).includes(treno))&&(!cassa||norm(x.cassa).includes(cassa))&&(!impianto||norm(x.impianto).includes(impianto)));
+  msg.textContent=`Visualizzati ${list.length} Open Item su ${openItemsCache.length}.`;
+  if(!list.length){out.innerHTML='<div class="empty">Nessun Open Item corrisponde ai filtri selezionati.</div>';return;}
+  out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
+    <td><div class="main-cell">#${escapeHtml(x.id)}</div><div class="sub-cell">${escapeHtml(x.treno||"—")}</div></td>
+    <td style="white-space:normal;min-width:200px;max-width:360px">${escapeHtml(x.descrizione||"—")}</td>
+    <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
+    <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
+    <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
+}
 async function loadOpenItems(){
   const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
   if(!msg||!out)return;
@@ -349,20 +369,10 @@ async function loadOpenItems(){
     const cfg=getSupabaseConfig();const client=window.supabase.createClient(cfg.url,cfg.key);
     const {data:rows,error}=await client.from("open_item").select("*").order("data_creazione",{ascending:false}).limit(500);
     if(error)throw error;
-    const list=rows||[];
-    if(!list.length){msg.textContent="Nessun Open Item presente nella tabella.";return;}
-    msg.textContent=`${list.length} Open Item caricati da Supabase.`;
-    out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
-      <td><div class="main-cell">#${escapeHtml(x.id)}</div><div class="sub-cell">${escapeHtml(x.treno||"—")}</div></td>
-      <td style="white-space:normal;min-width:200px;max-width:360px">${escapeHtml(x.descrizione||"—")}</td>
-      <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
-      <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
-      <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
-    const search=document.getElementById("globalSearch");
-    if(search)search.addEventListener("input",()=>{const q=search.value.toLocaleLowerCase("it-IT");out.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLocaleLowerCase("it-IT").includes(q)?"":"none");});
+    openItemsCache=rows||[];
+    renderOpenItemsFiltered();
   }catch(err){msg.innerHTML=`<b>Impossibile caricare gli Open Item.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Verifica che la tabella si chiami <b>open_item</b> e che Supabase consenta SELECT tramite le policy RLS.</span>`;}
 }
-
 async function editOpenItem(x){
   content.innerHTML=head("Modifica Open Item","Modifica l'anomalia selezionata")+
   `<section class="card"><form id="oiEditForm"><div class="form-grid">
