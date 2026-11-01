@@ -39,15 +39,17 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.auth-brand .brand-icon{flex-shrink:0}.auth-card h1{font-size:24px;margin:0 0 6px}.auth-subtitle{color:#94a5c2;margin:0 0 22px}.auth-form{display:grid;gap:14px}.auth-form .field[hidden]{display:none!important}.auth-form .field input{width:100%;min-width:0}.auth-message{display:none;border-radius:9px;padding:11px 12px;font-size:12px;white-space:pre-wrap}.auth-message.error{display:block;background:#3b202b;border:1px solid #80404d;color:#ffd1d6}.auth-message.success{display:block;background:#17372f;border:1px solid #2b806b;color:#c6ffed}.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}.auth-link{border:0;background:transparent;color:#8ec4ff;padding:4px 0;font-weight:700}.auth-link:hover{text-decoration:underline}.auth-hint{font-size:11px;color:#94a5c2;margin-top:18px}
 
 
-/* Evidenziazione righe log FDE per categoria evento */
-#fdeTable tr.fde-row-fire{background:rgba(255,75,92,.18);box-shadow:inset 4px 0 #ff4858}
-#fdeTable tr.fde-row-smoke{background:rgba(255,139,61,.16);box-shadow:inset 4px 0 #ff8b3d}
-#fdeTable tr.fde-row-thermal{background:rgba(255,198,64,.15);box-shadow:inset 4px 0 #ffc640}
-#fdeTable tr.fde-row-pressure{background:rgba(78,161,255,.17);box-shadow:inset 4px 0 #4ea1ff}
-#fdeTable tr.fde-row-water{background:rgba(73,212,232,.15);box-shadow:inset 4px 0 #49d4e8}
-#fdeTable tr.fde-row-out{background:rgba(177,120,255,.16);box-shadow:inset 4px 0 #b178ff}
-#fdeTable tr.fde-row-fault{background:rgba(255,114,126,.12);box-shadow:inset 4px 0 #ff727e}
-#fdeTable tbody tr:hover{filter:brightness(1.18)}
+/* Evidenziazione più marcata delle righe Log FDE */
+#fdeTable tbody tr.fde-row-fire{background:#70212b!important;box-shadow:inset 7px 0 #ff394f;color:#fff}
+#fdeTable tbody tr.fde-row-smoke{background:#713817!important;box-shadow:inset 7px 0 #ff8a24;color:#fff}
+#fdeTable tbody tr.fde-row-thermal{background:#66500d!important;box-shadow:inset 7px 0 #ffd12a;color:#fff}
+#fdeTable tbody tr.fde-row-pressure{background:#173f70!important;box-shadow:inset 7px 0 #48a5ff;color:#fff}
+#fdeTable tbody tr.fde-row-water{background:#15525d!important;box-shadow:inset 7px 0 #36d8ed;color:#fff}
+#fdeTable tbody tr.fde-row-out{background:#45256f!important;box-shadow:inset 7px 0 #bd8aff;color:#fff}
+#fdeTable tbody tr.fde-row-fault{background:#642b36!important;box-shadow:inset 7px 0 #ff7585;color:#fff}
+#fdeTable tbody tr.fde-row-fire td,#fdeTable tbody tr.fde-row-smoke td,#fdeTable tbody tr.fde-row-thermal td,#fdeTable tbody tr.fde-row-pressure td,#fdeTable tbody tr.fde-row-water td,#fdeTable tbody tr.fde-row-out td,#fdeTable tbody tr.fde-row-fault td{color:#fff;border-bottom-color:rgba(255,255,255,.16);font-weight:600}
+#fdeTable tbody tr.fde-row-fire .status,#fdeTable tbody tr.fde-row-smoke .status,#fdeTable tbody tr.fde-row-thermal .status,#fdeTable tbody tr.fde-row-pressure .status,#fdeTable tbody tr.fde-row-water .status,#fdeTable tbody tr.fde-row-out .status,#fdeTable tbody tr.fde-row-fault .status{border:1px solid rgba(255,255,255,.35);font-weight:900}
+#fdeTable tbody tr:hover{filter:brightness(1.12)}
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -144,7 +146,7 @@ function cercaComponentePage(){
     `<section class="card">
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, assieme, IDRA o descrizione…" autocomplete="off"><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
-      <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#dc2626;color:#dc2626">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
+      <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca.</div>
       <div id="componentResults" class="component-results"></div>
       <div id="componentFormHost"></div>
