@@ -471,8 +471,8 @@ function showAuthMode(mode,message=""){
   const title=document.getElementById("authTitle"),sub=document.getElementById("authSubtitle"),name=document.getElementById("authNameField"),usernameField=document.getElementById("authUsernameField"),username=document.getElementById("authUsername"),phoneField=document.getElementById("authPhoneField"),phone=document.getElementById("authPhone"),pw=document.getElementById("authPasswordField"),confirm=document.getElementById("authConfirmField"),submit=document.getElementById("authSubmit"),links=document.getElementById("authLinks"),password=document.getElementById("authPassword"),email=document.getElementById("authEmail"),emailField=document.getElementById("authEmailField");
   const isReset=mode==="reset",isSignup=mode==="signup",isUpdate=mode==="updatePassword";
   title.textContent=isSignup?"Crea un account":isReset?"Recupera password":isUpdate?"Imposta nuova password":"Accedi";
-  sub.textContent=isSignup?"Registrati con la tua email e scegli una password.":isReset?"Ti invieremo un link per reimpostare la password.":isUpdate?"Scegli una nuova password per il tuo account.":"Accedi con il tuo account aziendale.";
-  name.hidden=!isSignup;usernameField.hidden=!isSignup;username.required=isSignup;phoneField.hidden=!isSignup;phone.required=isSignup;pw.hidden=isReset;confirm.hidden=!(isSignup||isUpdate);emailField.hidden=isUpdate;email.required=!isUpdate;email.type="email";email.autocomplete="email";email.placeholder="nome@azienda.it";if(!isSignup&&!isReset&&!isUpdate){email.type="text";email.autocomplete="username";email.placeholder="Email oppure nome utente";emailField.querySelector("label").textContent="Email o nome utente";email.required=true;}else{emailField.querySelector("label").textContent="Email";}password.required=!isReset;password.autocomplete=(isSignup||isUpdate)?"new-password":"current-password";
+  sub.textContent=isSignup?"Registrati inserendo tutti i tuoi dati.":isReset?"Ti invieremo un link per reimpostare la password.":isUpdate?"Scegli una nuova password per il tuo account.":"Accedi con email e password.";
+  name.hidden=!isSignup;usernameField.hidden=!isSignup;username.required=isSignup;phoneField.hidden=!isSignup;phone.required=isSignup;pw.hidden=isReset;confirm.hidden=!(isSignup||isUpdate);emailField.hidden=isUpdate;email.required=!isUpdate;email.type="email";email.autocomplete="email";email.placeholder="nome@azienda.it";emailField.querySelector("label").textContent="Email";password.required=!isReset;password.autocomplete=(isSignup||isUpdate)?"new-password":"current-password";
   document.getElementById("authName").required=isSignup;document.getElementById("authConfirm").required=isSignup||isUpdate;
   submit.textContent=isSignup?"Registrati":isReset?"Invia link di recupero":isUpdate?"Salva nuova password":"Accedi";
   links.innerHTML=isSignup?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Hai già un account? Accedi</button>':isReset?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Torna all’accesso</button>':isUpdate?"":'<button class="auth-link" type="button" onclick="showAuthMode(\'reset\')">Password dimenticata?</button><button class="auth-link" type="button" onclick="showAuthMode(\'signup\')">Crea un account</button>';
@@ -515,11 +515,8 @@ document.getElementById("authForm").addEventListener("submit",async e=>{
       authRecoverySession=false;authMessage("Password aggiornata. Accesso in corso…","success");
       setTimeout(()=>finishAuthGate(result.data?.user?{user:result.data.user}:null),700);
     }else{
-      if(identifier.includes("@")){result=await client.auth.signInWithPassword({email:identifier,password});if(result.error)throw result.error;}else{
-        const cfg=getSupabaseConfig();const response=await fetch(cfg.url.replace(/\/$/,"")+"/functions/v1/username-login",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+cfg.key},body:JSON.stringify({username:identifier,password})});
-        const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"Accesso con nome utente non riuscito. Verifica che la funzione username-login sia configurata su Supabase.");
-        result=await client.auth.setSession({access_token:payload.access_token,refresh_token:payload.refresh_token});if(result.error)throw result.error;
-      }
+      if(!identifier.includes("@"))throw new Error("Inserisci un indirizzo email valido.");
+      result=await client.auth.signInWithPassword({email:identifier,password});if(result.error)throw result.error;
       authRecoverySession=false;await finishAuthGate(result.data.session);toast("Accesso effettuato.");
     }
   }catch(err){authMessage(err.message||"Operazione non riuscita. Riprova.","error")}
