@@ -32,10 +32,34 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 
 @media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.content{padding:22px 20px}.topbar{padding:0 20px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
 @media(max-width:700px){.app{display:block}.sidebar{display:none;position:fixed;z-index:8;inset:0 auto 0 0;width:260px;box-shadow:15px 0 50px #0009}.sidebar.open{display:flex}.topbar{height:64px;padding:0 15px}.mobile-menu{display:inline-block}.content{padding:20px 14px}.pagehead{display:block}.pagehead h1{font-size:24px}.pagehead .actions{margin-top:15px}.kpis{gap:10px}.card{padding:14px}.kpi-num{font-size:25px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.badge-demo{display:none}}
+
+/* Autenticazione Supabase */
+.auth-overlay{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#18345b 0%,#0a1020 60%);overflow:auto}
+.auth-card{width:min(100%,440px);background:#111b2e;border:1px solid #2b3b56;border-radius:18px;padding:28px;box-shadow:0 24px 80px #0008}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.auth-brand .brand-icon{flex-shrink:0}.auth-card h1{font-size:24px;margin:0 0 6px}.auth-subtitle{color:#94a5c2;margin:0 0 22px}.auth-form{display:grid;gap:14px}.auth-form .field input{width:100%;min-width:0}.auth-message{display:none;border-radius:9px;padding:11px 12px;font-size:12px;white-space:pre-wrap}.auth-message.error{display:block;background:#3b202b;border:1px solid #80404d;color:#ffd1d6}.auth-message.success{display:block;background:#17372f;border:1px solid #2b806b;color:#c6ffed}.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}.auth-link{border:0;background:transparent;color:#8ec4ff;padding:4px 0;font-weight:700}.auth-link:hover{text-decoration:underline}.auth-hint{font-size:11px;color:#94a5c2;margin-top:18px}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <section class="auth-card">
+    <div class="auth-brand"><div class="brand-icon" aria-hidden="true">🚄</div><div><strong>Railway Maintenance</strong><div class="muted tiny">Accesso operatori</div></div></div>
+    <h1 id="authTitle">Accedi</h1><p class="auth-subtitle" id="authSubtitle">Accedi con il tuo account aziendale.</p>
+    <div id="authMessage" class="auth-message" role="status" aria-live="polite"></div>
+    <form id="authForm" class="auth-form">
+      <div class="field" id="authNameField" hidden><label for="authName">Nome e cognome</label><input id="authName" name="name" autocomplete="name" maxlength="100" placeholder="Nome Cognome"></div>
+      <div class="field"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="nome@azienda.it"></div>
+      <div class="field" id="authPasswordField"><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="Almeno 8 caratteri"></div>
+      <div class="field" id="authConfirmField" hidden><label for="authConfirm">Conferma password</label><input id="authConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8" placeholder="Ripeti la password"></div>
+      <button class="btn primary" id="authSubmit" type="submit">Accedi</button>
+    </form>
+    <div class="auth-links" id="authLinks"><button class="auth-link" type="button" onclick="showAuthMode('reset')">Password dimenticata?</button><button class="auth-link" type="button" onclick="showAuthMode('signup')">Crea un account</button></div>
+    <div class="auth-hint">Le credenziali sono gestite da Supabase Auth. Non usare la password di altri servizi.</div>
+  </section>
+</div>
+
 <div class="app">
 <aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-icon" aria-label="Logo ferroviario" title="Railway Maintenance"><svg viewBox="0 0 48 48" width="30" height="30" role="img" aria-hidden="true"><path d="M14 5h20c5 0 8 4 8 9v16c0 4-2 7-6 9l4 4h-7l-4-4h-10l-4 4H8l4-5c-4-2-6-5-6-9V14c0-5 3-9 8-9Z" fill="#f5fbff"/><path d="M15 11h18c2 0 3 1 3 3v10H12V14c0-2 1-3 3-3Z" fill="#287de7"/><path d="M12 28h24v3c0 3-2 5-5 5H17c-3 0-5-2-5-5Z" fill="#49d4e8"/><circle cx="17" cy="31" r="2" fill="#0d1628"/><circle cx="31" cy="31" r="2" fill="#0d1628"/><path d="M18 7h12" stroke="#49d4e8" stroke-width="2" stroke-linecap="round"/></svg></div><div><strong>Railway Maintenance</strong><small>Maintenance intelligence</small></div></div>
@@ -410,7 +434,95 @@ function drawSensorChart(id,rows,keys){
 function newScadenza(){content.innerHTML=head("Nuova scadenza","Aggiungi un'attività pianificata")+`<section class="card"><form id="scForm"><div class="form-grid"><div class="field full"><label>Attività *</label><input name="titolo" required></div><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Responsabile</label><select name="responsabile">${data.tecnici.map(t=>`<option>${t}</option>`).join("")}</select></div><div class="field"><label>Data *</label><input type="date" name="data" required></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('scadenze')">Annulla</button><button class="btn primary">Salva scadenza</button></div></form></section>`;document.getElementById("scForm").addEventListener("submit",e=>{e.preventDefault();data.scadenze.push({id:"SC-"+String(32+data.scadenze.length-3).padStart(3,"0"),...Object.fromEntries(new FormData(e.target))});save();go("scadenze");toast("Scadenza salvata nella demo.")})}
 function newTecnico(){let n=prompt("Nome del tecnico (demo):");if(n&&n.trim()){data.tecnici.push(n.trim());save();go("tecnici");toast("Tecnico aggiunto nella demo.")}}
 function exportCSV(){let rows=[["ID","Treno","Cassa","Attività","Tecnico","Data","Stato","Esito","Note"],...data.interventi.map(x=>[x.id,x.treno,x.cassa,x.titolo,x.tecnico,x.data,x.stato,x.esito,x.note])];let csv=rows.map(r=>r.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(";")).join("\r\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}));a.download="railtech360_interventi_demo.csv";a.click();URL.revokeObjectURL(a.href);toast("CSV esportato.")}
-render();
+
+// =========================================================
+// AUTENTICAZIONE: Supabase Auth (email/password, signup, reset)
+// =========================================================
+let authClient = null;
+let authMode = "login";
+let authRecoverySession = false;
+function getAuthClient(){
+  if(authClient) return authClient;
+  const cfg=getSupabaseConfig();
+  if(!cfg.url||!cfg.key) throw new Error("Configurazione Supabase mancante. Verifica Project URL e chiave pubblicabile.");
+  if(!window.supabase) throw new Error("Libreria Supabase non caricata. Controlla la connessione Internet.");
+  authClient=window.supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  return authClient;
+}
+function authMessage(text,type="error"){
+  const el=document.getElementById("authMessage");if(!el)return;
+  el.textContent=text;el.className="auth-message "+type;
+}
+function clearAuthMessage(){const el=document.getElementById("authMessage");if(el){el.textContent="";el.className="auth-message"}}
+function showAuthMode(mode,message=""){
+  authMode=mode;clearAuthMessage();
+  const title=document.getElementById("authTitle"),sub=document.getElementById("authSubtitle"),name=document.getElementById("authNameField"),pw=document.getElementById("authPasswordField"),confirm=document.getElementById("authConfirmField"),submit=document.getElementById("authSubmit"),links=document.getElementById("authLinks"),password=document.getElementById("authPassword"),email=document.getElementById("authEmail");
+  const isReset=mode==="reset",isSignup=mode==="signup",isUpdate=mode==="updatePassword";
+  title.textContent=isSignup?"Crea un account":isReset?"Recupera password":isUpdate?"Imposta nuova password":"Accedi";
+  sub.textContent=isSignup?"Registrati con la tua email e scegli una password.":isReset?"Ti invieremo un link per reimpostare la password.":isUpdate?"Scegli una nuova password per il tuo account.":"Accedi con il tuo account aziendale.";
+  name.hidden=!isSignup;pw.hidden=isReset;confirm.hidden=!(isSignup||isUpdate);email.closest(".field").hidden=isUpdate;email.required=!isUpdate;password.required=!isReset;password.autocomplete=(isSignup||isUpdate)?"new-password":"current-password";
+  document.getElementById("authName").required=isSignup;document.getElementById("authConfirm").required=isSignup||isUpdate;
+  submit.textContent=isSignup?"Registrati":isReset?"Invia link di recupero":isUpdate?"Salva nuova password":"Accedi";
+  links.innerHTML=isSignup?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Hai già un account? Accedi</button>':isReset?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Torna all’accesso</button>':isUpdate?"":'<button class="auth-link" type="button" onclick="showAuthMode(\'reset\')">Password dimenticata?</button><button class="auth-link" type="button" onclick="showAuthMode(\'signup\')">Crea un account</button>';
+  if(message)authMessage(message,"success");
+}
+function showAuthOverlay(){const el=document.getElementById("authOverlay");if(el)el.style.display="flex"}
+function hideAuthOverlay(){const el=document.getElementById("authOverlay");if(el)el.style.display="none"}
+async function finishAuthGate(session){
+  if(!session?.user){showAuthMode("login");showAuthOverlay();return}
+  // Il link di recupero deve consentire di impostare la nuova password prima di entrare nell'app.
+  if(authRecoverySession){showAuthMode("updatePassword");showAuthOverlay();return}
+  hideAuthOverlay();
+  const user=session.user;
+  const label=user.user_metadata?.full_name||user.email||"Operatore";
+  const avatar=document.querySelector(".top-actions .avatar");
+  if(avatar){avatar.textContent=label.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"RM";avatar.title=label;avatar.style.cursor="pointer";avatar.onclick=async()=>{if(confirm("Vuoi uscire da Railway Maintenance?")){try{const {error}=await getAuthClient().auth.signOut();if(error)throw error;authRecoverySession=false;showAuthMode("login");showAuthOverlay();toast("Disconnessione completata.")}catch(e){toast("Errore durante la disconnessione: "+(e.message||String(e)))}}};}
+  render();
+}
+document.getElementById("authForm").addEventListener("submit",async e=>{
+  e.preventDefault();const btn=document.getElementById("authSubmit");btn.disabled=true;const old=btn.textContent;btn.textContent="Attendi…";clearAuthMessage();
+  const email=document.getElementById("authEmail").value.trim();const password=document.getElementById("authPassword").value;const confirmPw=document.getElementById("authConfirm").value;const fullName=document.getElementById("authName").value.trim();
+  try{
+    const client=getAuthClient();let result;
+    if(authMode==="signup"){
+      if(password.length<8)throw new Error("La password deve contenere almeno 8 caratteri.");
+      if(password!==confirmPw)throw new Error("Le password non coincidono.");
+      result=await client.auth.signUp({email,password,options:{data:{full_name:fullName},emailRedirectTo:location.origin+location.pathname}});
+      if(result.error)throw result.error;
+      if(result.data?.session){authRecoverySession=false;await finishAuthGate(result.data.session);toast("Registrazione completata.")}
+      else{showAuthMode("login");authMessage("Registrazione inviata. Controlla la tua email e conferma l'indirizzo prima di accedere.","success");}
+    }else if(authMode==="reset"){
+      result=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});if(result.error)throw result.error;
+      authMessage("Se l'indirizzo è registrato, riceverai un'email con il link per reimpostare la password.","success");
+    }else if(authMode==="updatePassword"){
+      if(password.length<8)throw new Error("La nuova password deve contenere almeno 8 caratteri.");
+      if(password!==confirmPw)throw new Error("Le password non coincidono.");
+      result=await client.auth.updateUser({password});if(result.error)throw result.error;
+      authRecoverySession=false;authMessage("Password aggiornata. Accesso in corso…","success");
+      setTimeout(()=>finishAuthGate(result.data?.user?{user:result.data.user}:null),700);
+    }else{
+      result=await client.auth.signInWithPassword({email,password});if(result.error)throw result.error;
+      authRecoverySession=false;await finishAuthGate(result.data.session);toast("Accesso effettuato.");
+    }
+  }catch(err){authMessage(err.message||"Operazione non riuscita. Riprova.","error")}
+  finally{btn.disabled=false;btn.textContent=old;}
+});
+(async function initAuth(){
+  try{
+    const client=getAuthClient();
+    client.auth.onAuthStateChange((event,session)=>{
+      if(event==="PASSWORD_RECOVERY"){authRecoverySession=true;showAuthMode("updatePassword");showAuthOverlay();return}
+      if(event==="SIGNED_OUT"){authRecoverySession=false;showAuthMode("login");showAuthOverlay();return}
+      if(event==="SIGNED_IN"&&session&&!authRecoverySession){hideAuthOverlay();}
+    });
+    const {data,error}=await client.auth.getSession();if(error)throw error;
+    const recovery=new URLSearchParams(location.hash.replace(/^#/ ,"")).get("type")==="recovery";
+    if(recovery){authRecoverySession=true;showAuthMode("updatePassword");showAuthOverlay();}
+    else if(data.session){await finishAuthGate(data.session);}
+    else{showAuthMode("login");showAuthOverlay();}
+  }catch(err){showAuthMode("login");showAuthOverlay();authMessage("Impossibile inizializzare l'autenticazione: "+(err.message||String(err)),"error")}
+})();
+
 </script>
 </body>
 </html>
