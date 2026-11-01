@@ -209,7 +209,7 @@ function ccmDecodeRec(row){const states={};CCM_DIGITAL_WORDS.forEach(word=>{if(C
 function ccmRenderSummary(rows){
  if(!rows.length)return `<div class="notice">Nessun evento trovato.</div>`;
  const heads=["REC","CODE","DATE","TIME",..."123456".split("").map(n=>"F"+n),"DESCRIZIONE"];
- return `<div class="table-wrap"><table><thead><tr>${heads.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td>${ccmEsc(r[0])}</td><td>${ccmEsc(r[1])}</td><td>${ccmEsc(r[2])}</td><td>${ccmEsc(r[3])}</td>${r.slice(4,10).map(x=>`<td>${ccmEsc(x)}</td>`).join("")}<td>${ccmEsc(r[10])}</td></tr>`).join("")}</tbody></table></div>`;
+ return `<div class="table-wrap ccm-summary-scroll" style="max-height:390px;overflow:auto;border:1px solid var(--border,#dbe2ea);border-radius:10px"><table style="margin:0"><thead><tr>${heads.map(x=>`<th style="position:sticky;top:0;z-index:2;background:var(--card,#fff)">${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td>${ccmEsc(r[0])}</td><td>${ccmEsc(r[1])}</td><td>${ccmEsc(r[2])}</td><td>${ccmEsc(r[3])}</td>${r.slice(4,10).map(x=>`<td>${ccmEsc(x)}</td>`).join("")}<td>${ccmEsc(r[10])}</td></tr>`).join("")}</tbody></table></div>`;
 }
 function ccmRenderWord(word,states){
  const signals=CCM_BIT_MAP[word]||{};
