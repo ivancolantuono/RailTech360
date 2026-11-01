@@ -42,6 +42,7 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
   <div><div class="nav-label">WORKSPACE</div><nav class="nav" id="nav">
     <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
     <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
+    <button data-page="sensori"><span class="ico">⌁</span>Misurazione sensori</button>
   </nav></div>
 
 </aside>
@@ -72,7 +73,7 @@ try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClo
 function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
 let currentPage="cercaComponente";
 const content=document.getElementById("content");
-const pages={cercaComponente:"Cerca componente",openitem:"Open Item"};
+const pages={cercaComponente:"Cerca componente",openitem:"Open Item",sensori:"Misurazione sensori"};
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
@@ -232,7 +233,7 @@ async function saveComponent(event,mode,id){
 }
 
 function fmt(d){if(!d)return"—";return new Date(d+"T12:00:00").toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"})}
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,sensori:sensoriPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
@@ -288,16 +289,86 @@ async function loadOpenItems(){
     const list=rows||[];
     if(!list.length){msg.textContent="Nessun Open Item presente nella tabella.";return;}
     msg.textContent=`${list.length} Open Item caricati da Supabase.`;
-    out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il"],list.map(x=>`<tr>
+    out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
       <td><div class="main-cell">#${escapeHtml(x.id)}</div><div class="sub-cell">${escapeHtml(x.treno||"—")}</div></td>
       <td style="white-space:normal;min-width:200px;max-width:360px">${escapeHtml(x.descrizione||"—")}</td>
       <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
       <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
-      <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td></tr>`).join(""));
+      <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
     const search=document.getElementById("globalSearch");
     if(search)search.addEventListener("input",()=>{const q=search.value.toLocaleLowerCase("it-IT");out.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLocaleLowerCase("it-IT").includes(q)?"":"none");});
   }catch(err){msg.innerHTML=`<b>Impossibile caricare gli Open Item.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Verifica che la tabella si chiami <b>open_item</b> e che Supabase consenta SELECT tramite le policy RLS.</span>`;}
 }
+
+async function editOpenItem(x){
+  content.innerHTML=head("Modifica Open Item","Modifica l'anomalia selezionata")+
+  `<section class="card"><form id="oiEditForm"><div class="form-grid">
+  <div class="field"><label>Treno *</label><input name="treno" required value="${escapeHtml(x.treno||"")}"></div>
+  <div class="field"><label>Cassa</label><input name="cassa" value="${escapeHtml(x.cassa||"")}"></div>
+  <div class="field"><label>Impianto / apparato</label><input name="impianto" value="${escapeHtml(x.impianto||"")}"></div>
+  <div class="field"><label>Stato</label><select name="stato">${["APERTO","IN LAVORAZIONE","CHIUSO"].map(v=>`<option ${String(x.stato||"APERTO").toUpperCase()===v?"selected":""}>${v}</option>`).join("")}</select></div>
+  <div class="field full"><label>Descrizione anomalia *</label><textarea name="descrizione" required>${escapeHtml(x.descrizione||"")}</textarea></div>
+  <div class="field full"><label>Lavorazioni / interventi</label><textarea name="lavorazioni">${escapeHtml(x.lavorazioni||"")}</textarea></div>
+  <div class="field"><label>Avanzamento</label><input name="avanzamento" value="${escapeHtml(x.avanzamento||"")}"></div>
+  <div class="field"><label>Utente / tecnico</label><input name="utente" value="${escapeHtml(x.utente||"")}"></div>
+  </div><div class="form-actions"><button type="button" class="btn" onclick="go('openitem')">Annulla</button><button class="btn primary">Salva modifiche</button></div></form></section>`;
+  document.getElementById("oiEditForm").addEventListener("submit",async e=>{
+    e.preventDefault();const btn=e.submitter;btn.disabled=true;btn.textContent="Salvataggio…";
+    const f=Object.fromEntries(new FormData(e.target));
+    const payload={treno:f.treno.trim(),descrizione:f.descrizione.trim(),stato:f.stato,utente:f.utente.trim()||null,lavorazioni:f.lavorazioni.trim()||null,cassa:f.cassa.trim()||null,impianto:f.impianto.trim()||null,avanzamento:f.avanzamento.trim()||null};
+    try{const cfg=getSupabaseConfig();const client=window.supabase.createClient(cfg.url,cfg.key);const {error}=await client.from("open_item").update(payload).eq("id",x.id);if(error)throw error;toast("Open Item modificato.");go("openitem");}
+    catch(err){toast("Modifica non riuscita: "+(err.message||String(err)));btn.disabled=false;btn.textContent="Salva modifiche";}
+  });
+}
+async function deleteOpenItem(id){
+  if(!confirm(`Vuoi eliminare definitivamente l'Open Item #${id}?`))return;
+  try{const cfg=getSupabaseConfig();const client=window.supabase.createClient(cfg.url,cfg.key);const {error}=await client.from("open_item").delete().eq("id",id);if(error)throw error;toast("Open Item eliminato.");loadOpenItems();}
+  catch(err){toast("Eliminazione non riuscita: "+(err.message||String(err)));}
+}
+function sensoriPage(){
+ return head("Misurazione sensori","Analisi file .MNT per casse DM1 e DM8")+
+ `<section class="card"><div class="form-grid"><div class="field full"><label>File .MNT</label><input id="mntFile" type="file" accept=".mnt,.txt,text/plain"></div><div class="field"><label>Cassa</label><select id="mntCassa"><option value="auto">Riconosci automaticamente</option><option>DM1</option><option>DM8</option></select></div><div class="field" style="align-content:end"><button class="btn primary" onclick="analyzeMnt()">Analizza file</button></div></div><div id="mntMessage" class="muted" style="padding:14px 0">Carica un file .MNT per iniziare.</div><div id="mntStats"></div><div id="mntCharts"></div><div id="mntTable"></div></section>`;
+}
+const ORDER_DM1="007 005 006 004 003 002 001 008 009 010 011 012 013 014 015 017 016 018 027 029 030 028 026 025 023 024 022 021 020 019 031 032 033 034 035 036 038 037 039 040 041 042 043 044 045 046 047 048 049 050 051 052 053 054 055 056 057 058 059 060 061 062 063 064 065 066 067 068 074 073 072 071 070 069".split(" ");
+const ORDER_DM8="069 070 071 072 073 074 068 067 058 059 060 061 062 063 064 065 066 049 050 051 052 053 054 055 056 057 040 041 042 043 044 045 046 047 048 039 037 038 036 035 034 033 032 031 019 020 021 022 024 023 025 026 028 030 029 027 018 016 017 015 014 013 012 011 010 009 008 001 002 003 004 006 005 007".split(" ");
+function normSensor(v){let m=String(v??"").trim().replace(/\.0$/,"").match(/\d+/);return m?m[0].padStart(3,"0"):""}
+function splitMnt(line){if(line.includes("\t"))return line.split("\t").map(x=>x.trim());if(line.includes(";"))return line.split(";").map(x=>x.trim());if(line.includes(","))return line.split(",").map(x=>x.trim());return line.trim().split(/\s+/)}
+function normCol(v){let x=String(v).trim().replace(/^\\uFEFF/,"").toUpperCase();if(["ADD","ADDRESS","ADDR"].includes(x))return "ADD";if(["I","I."].includes(x))return "I";if(["I_I","I/I","I-I","II"].includes(x))return "I_I";return x}
+function numMnt(v){if(v==null||String(v).trim()==="")return null;let n=Number(String(v).replace(",", "."));return Number.isFinite(n)?n:null}
+async function analyzeMnt(){
+ const file=document.getElementById("mntFile").files[0],msg=document.getElementById("mntMessage");if(!file){msg.textContent="Seleziona prima un file .MNT.";return}
+ msg.textContent="Analisi in corso…";
+ try{
+  const bytes=await file.arrayBuffer();let text;try{text=new TextDecoder("utf-8").decode(bytes)}catch{text=new TextDecoder("iso-8859-1").decode(bytes)}
+  let cassa=document.getElementById("mntCassa").value;if(cassa==="auto"){let m=(file.name+"\\n"+text.slice(0,4000)).toUpperCase().match(/\bDM[18]\b/);cassa=m?m[0]:"SCONOSCIUTA"}
+  const lines=text.split(/\r?\n/);let hi=lines.findIndex(line=>{let u=line.toUpperCase();return u.includes("ADD")&&(u.includes("STA")||u.includes("I_I")||u.includes("I/I"))});
+  let records=[];
+  if(hi>=0){let h=splitMnt(lines[hi]).map(normCol), ix={add:h.indexOf("ADD"),i:h.indexOf("I"),ii:h.indexOf("I_I"),sta:h.indexOf("STA")};
+   if(ix.add<0)throw new Error("Intestazione ADD non trovata.");
+   for(let line of lines.slice(hi+1)){if(!line.trim())continue;let p=splitMnt(line),add=normSensor(p[ix.add]);if(!add)continue;records.push({ADD:add,I:ix.i>=0?numMnt(p[ix.i]):null,I_I:ix.ii>=0?numMnt(p[ix.ii]):null,STA:ix.sta>=0?numMnt(p[ix.sta]):null,PW4:p.length>10?numMnt(p[10]):null})}
+  }else{
+   for(let line of lines){if(!line.trim())continue;let p=splitMnt(line);if(p.length<2)continue;let add=normSensor(p[0]);if(!add)continue;let nums=p.slice(1).map(numMnt).filter(x=>x!==null);if(nums.length)records.push({ADD:add,I:nums.at(-1)??null,I_I:nums.at(-2)??null,STA:nums.at(-3)??null,PW4:null})}
+  }
+  const unique=new Map();records.forEach(r=>unique.set(r.ADD,r));records=[...unique.values()];
+  const order=cassa==="DM1"?ORDER_DM1:cassa==="DM8"?ORDER_DM8:null;if(order){let pos=new Map(order.map((v,i)=>[v,i]));records.sort((a,b)=>(pos.get(a.ADD)??9999)-(pos.get(b.ADD)??9999))}
+  if(!records.length)throw new Error("Nessun dato sensore riconosciuto. Verifica il formato del file.");
+  const critical=records.filter(r=>r.STA!==null&&r.STA<=45),ii=records.map(r=>r.I_I).filter(v=>v!==null),pw=records.map(r=>r.PW4).filter(v=>v!==null);
+  document.getElementById("mntStats").innerHTML=`<div class="grid kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:10px 0"><div class="card"><div class="muted">Sensori letti</div><div class="kpi-num">${records.length}</div></div><div class="card"><div class="muted">STA ≤ 45</div><div class="kpi-num">${critical.length}</div></div><div class="card"><div class="muted">Cassa rilevata</div><div class="kpi-num">${escapeHtml(cassa)}</div></div></div>`;
+  document.getElementById("mntCharts").innerHTML=`<h2>STA e I_I per sensore</h2><div style="height:300px"><canvas id="sensorChart" style="width:100%;height:100%"></canvas></div><h2>PW4 per sensore</h2><div style="height:240px"><canvas id="pwChart" style="width:100%;height:100%"></canvas></div>`;
+  drawSensorChart("sensorChart",records,["STA","I_I"]);drawSensorChart("pwChart",records,["PW4"]);
+  document.getElementById("mntTable").innerHTML=table(["ADD / Sensore","I","I_I","STA","PW4"],records.map(r=>`<tr><td>${r.ADD}</td><td>${r.I??"—"}</td><td>${r.I_I??"—"}</td><td style="${r.STA!==null&&r.STA<=45?'color:var(--red);font-weight:800':''}">${r.STA??"—"}</td><td>${r.PW4??"—"}</td></tr>`).join(""));
+  msg.textContent=`Analisi completata: ${file.name} · ${cassa} · ${critical.length} sensori con STA ≤ 45.`;
+ }catch(err){msg.textContent="Errore: "+(err.message||String(err));}
+}
+function drawSensorChart(id,rows,keys){
+ const canvas=document.getElementById(id);if(!canvas)return;const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1;canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);const w=rect.width,h=rect.height,pad={l:42,r:12,t:12,b:48};ctx.clearRect(0,0,w,h);
+ const vals=rows.flatMap(r=>keys.map(k=>r[k])).filter(v=>v!==null&&v!==undefined);if(!vals.length){ctx.fillStyle="#94a5c2";ctx.fillText("Nessun valore numerico",pad.l,30);return}let min=Math.min(0,...vals),max=Math.max(...vals);if(max===min)max=min+1;
+ const x=i=>pad.l+i*(w-pad.l-pad.r)/Math.max(1,rows.length-1),y=v=>h-pad.b-(v-min)*(h-pad.t-pad.b)/(max-min);
+ ctx.strokeStyle="#293a56";ctx.fillStyle="#94a5c2";ctx.font="10px sans-serif";for(let j=0;j<=4;j++){let v=min+(max-min)*j/4,yy=y(v);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillText(v.toFixed(1),3,yy+3)}
+ const colors=["#4ea1ff","#49d4e8","#f4bd58"];keys.forEach((k,ki)=>{ctx.strokeStyle=colors[ki%colors.length];ctx.lineWidth=2;ctx.beginPath();let started=false;rows.forEach((r,i)=>{if(r[k]===null||r[k]===undefined){started=false;return}if(!started){ctx.moveTo(x(i),y(r[k]));started=true}else ctx.lineTo(x(i),y(r[k]))});ctx.stroke()});
+ ctx.fillStyle="#94a5c2";const step=Math.max(1,Math.ceil(rows.length/18));rows.forEach((r,i)=>{if(i%step===0){ctx.save();ctx.translate(x(i),h-pad.b+5);ctx.rotate(-Math.PI/3);ctx.fillText(r.ADD,-2,0);ctx.restore()}});ctx.fillText(keys.join(" / "),pad.l, h-5);
+}
+
 function newScadenza(){content.innerHTML=head("Nuova scadenza","Aggiungi un'attività pianificata")+`<section class="card"><form id="scForm"><div class="form-grid"><div class="field full"><label>Attività *</label><input name="titolo" required></div><div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div><div class="field"><label>Responsabile</label><select name="responsabile">${data.tecnici.map(t=>`<option>${t}</option>`).join("")}</select></div><div class="field"><label>Data *</label><input type="date" name="data" required></div></div><div class="form-actions"><button type="button" class="btn" onclick="go('scadenze')">Annulla</button><button class="btn primary">Salva scadenza</button></div></form></section>`;document.getElementById("scForm").addEventListener("submit",e=>{e.preventDefault();data.scadenze.push({id:"SC-"+String(32+data.scadenze.length-3).padStart(3,"0"),...Object.fromEntries(new FormData(e.target))});save();go("scadenze");toast("Scadenza salvata nella demo.")})}
 function newTecnico(){let n=prompt("Nome del tecnico (demo):");if(n&&n.trim()){data.tecnici.push(n.trim());save();go("tecnici");toast("Tecnico aggiunto nella demo.")}}
 function exportCSV(){let rows=[["ID","Treno","Cassa","Attività","Tecnico","Data","Stato","Esito","Note"],...data.interventi.map(x=>[x.id,x.treno,x.cassa,x.titolo,x.tecnico,x.data,x.stato,x.esito,x.note])];let csv=rows.map(r=>r.map(v=>'"'+String(v||"").replaceAll('"','""')+'"').join(";")).join("\r\n");let a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}));a.download="railtech360_interventi_demo.csv";a.click();URL.revokeObjectURL(a.href);toast("CSV esportato.")}
