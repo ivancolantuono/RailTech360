@@ -51,6 +51,47 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 #fdeTable tbody tr.fde-row-fire .status,#fdeTable tbody tr.fde-row-smoke .status,#fdeTable tbody tr.fde-row-thermal .status,#fdeTable tbody tr.fde-row-pressure .status,#fdeTable tbody tr.fde-row-water .status,#fdeTable tbody tr.fde-row-out .status,#fdeTable tbody tr.fde-row-fault .status{border:1px solid rgba(255,255,255,.35);font-weight:900}
 #fdeTable tbody tr:hover{filter:brightness(1.12)}
 
+
+/* Tema Light Tech: interfaccia chiara, accenti blu e log FDE ben marcati */
+:root{--bg:#f3f6fb;--panel:#ffffff;--panel2:#eef4fb;--line:#d7e0ec;--text:#172337;--muted:#607086;--blue:#1677d2;--cyan:#087fbd;--green:#13845b;--amber:#a96800;--red:#c93545}
+body{background:var(--bg);color:var(--text)}
+.sidebar{background:#ffffff;border-right:1px solid #d7e0ec;box-shadow:2px 0 12px rgba(28,55,90,.04)}
+.brand strong{color:#15253c}.brand small{color:#65758b}
+.nav-label{color:#78889d}.nav button{color:#40536b}.nav button:hover{background:#edf5fd;color:#145fa8}.nav button.active{background:#e2f0ff;color:#145fa8;box-shadow:inset 3px 0 #1677d2}
+.side-bottom{border-color:#d7e0ec;background:#f6f9fd}.side-bottom p{color:#607086}
+.topbar{background:rgba(255,255,255,.96);border-bottom-color:#d7e0ec;box-shadow:0 2px 10px rgba(28,55,90,.04)}
+.crumb{color:#607086}.avatar{background:#dcecff;color:#145fa8}
+.content{color:var(--text)}.eyebrow{color:#087fbd}.pagehead p{color:#607086}
+.btn{border-color:#cbd7e5;background:#fff;color:#26384f;box-shadow:0 1px 2px rgba(24,45,72,.04)}
+.btn:hover{border-color:#8bbce9;background:#f5faff}.btn.primary{background:#1677d2;border-color:#1677d2;color:#fff}.btn.primary:hover{background:#1168ba;border-color:#1168ba}
+.card{background:#fff;border-color:#dbe3ed;box-shadow:0 3px 12px rgba(30,55,85,.045)}
+.kpi-top,.kpi-foot,.muted{color:#607086}.kpi-icon{background:#e5f2ff;color:#176bb4}.kpi-foot span{color:#13845b}
+th{color:#5c6e84;border-bottom-color:#d7e0ec;background:#f4f7fb}
+td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.sub-cell{color:#65758b}
+.status{border:1px solid transparent}.s-open{color:#875300;background:#fff2d5;border-color:#f2d28b}.s-work{color:#145fa8;background:#e4f1ff;border-color:#b8d9fb}.s-done{color:#116b4b;background:#ddf7eb;border-color:#a9e5ca}.s-critical{color:#a91f32;background:#ffe4e7;border-color:#f3b5bd}
+.track{background:#e1e8f0}.deadline{border-bottom-color:#e2e8f0}.datebox{border-color:#d5dfeb;background:#f3f7fc}.datebox span{color:#607086}
+.searchbar{border-color:#cfdbe8;background:#fff}.searchbar input{color:#172337}.searchbar input::placeholder,.toolbar input::placeholder,.field input::placeholder,.field textarea::placeholder{color:#8190a3}
+.toolbar input,.toolbar select,.field input,.field select,.field textarea{background:#fff;color:#172337;border-color:#cbd7e5}.toolbar input:focus,.field input:focus,.field select:focus,.field textarea:focus{border-color:#1677d2;box-shadow:0 0 0 3px rgba(22,119,210,.12)}
+.field label{color:#40536b}.empty{color:#607086}.notice{border-color:#edcf87;background:#fff7df;color:#7b5100}
+.toast{background:#e0f7ed;border-color:#83d4b5;color:#115c42;box-shadow:0 10px 35px rgba(30,55,85,.18)}
+.config-status{color:#607086}.config-status.ok{color:#13845b}.component-pn{color:#145fa8}
+.badge-demo{color:#875300;border-color:#edcf87;background:#fff7df}
+.auth-overlay{background:radial-gradient(ellipse at top,#e4f2ff 0%,#f3f6fb 65%)}
+.auth-card{background:#fff;border-color:#d7e0ec;box-shadow:0 24px 80px rgba(31,55,84,.18)}
+.auth-subtitle,.auth-hint{color:#607086}.auth-message.error{background:#ffe8eb;border-color:#f1b8c0;color:#a51e31}.auth-message.success{background:#e0f7ed;border-color:#83d4b5;color:#115c42}.auth-link{color:#145fa8}
+#deleteComponentBtn{background:#fff1f2!important;border-color:#f1c2c8!important;color:#a52b3b!important}#deleteComponentBtn:hover{background:#ffe3e6!important;border-color:#df8d99!important}
+/* I colori saturi dei Log FDE sono mantenuti per riconoscere subito gli eventi critici. */
+#fdeTable tbody tr.fde-row-fire{background:#b91c2c!important;box-shadow:inset 7px 0 #ff263d;color:#fff}
+#fdeTable tbody tr.fde-row-smoke{background:#c45b0b!important;box-shadow:inset 7px 0 #ff9c28;color:#fff}
+#fdeTable tbody tr.fde-row-thermal{background:#9a7300!important;box-shadow:inset 7px 0 #ffd43b;color:#fff}
+#fdeTable tbody tr.fde-row-pressure{background:#145aa0!important;box-shadow:inset 7px 0 #51b2ff;color:#fff}
+#fdeTable tbody tr.fde-row-water{background:#087887!important;box-shadow:inset 7px 0 #41e4ef;color:#fff}
+#fdeTable tbody tr.fde-row-out{background:#6636a6!important;box-shadow:inset 7px 0 #c5a0ff;color:#fff}
+#fdeTable tbody tr.fde-row-fault{background:#8f263b!important;box-shadow:inset 7px 0 #ff8294;color:#fff}
+#fdeTable tbody tr.fde-row-fire td,#fdeTable tbody tr.fde-row-smoke td,#fdeTable tbody tr.fde-row-thermal td,#fdeTable tbody tr.fde-row-pressure td,#fdeTable tbody tr.fde-row-water td,#fdeTable tbody tr.fde-row-out td,#fdeTable tbody tr.fde-row-fault td{color:#fff;border-bottom-color:rgba(255,255,255,.22);font-weight:650}
+#fdeTable tbody tr.fde-row-fire .status,#fdeTable tbody tr.fde-row-smoke .status,#fdeTable tbody tr.fde-row-thermal .status,#fdeTable tbody tr.fde-row-pressure .status,#fdeTable tbody tr.fde-row-water .status,#fdeTable tbody tr.fde-row-out .status,#fdeTable tbody tr.fde-row-fault .status{border:1px solid rgba(255,255,255,.55);font-weight:900}
+#fdeTable tbody tr:hover{filter:brightness(1.06)}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
