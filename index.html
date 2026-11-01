@@ -132,6 +132,14 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
 .fde-timeline-details .table-wrap table{border-collapse:separate;border-spacing:0}
 .fde-timeline-details .table-wrap thead th{position:sticky;top:0;z-index:2}
 .fde-timeline-details .table-wrap tbody tr{height:40px}
+/* Tabella Misurazione sensori: chiusa inizialmente e scorrevole su circa 15 righe */
+.sensor-table-details{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:rgba(8,15,29,.35);margin-top:14px}
+.sensor-table-details summary{cursor:pointer;font-weight:700;color:var(--text);padding:3px 0;user-select:none}
+.sensor-table-details[open] summary{margin-bottom:10px;color:var(--cyan)}
+.sensor-table-details .table-wrap{max-height:680px;overflow:auto;overscroll-behavior:contain;border-radius:8px}
+.sensor-table-details .table-wrap table{border-collapse:separate;border-spacing:0}
+.sensor-table-details .table-wrap thead th{position:sticky;top:0;z-index:2}
+.sensor-table-details .table-wrap tbody tr{height:40px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -719,7 +727,7 @@ async function analyzeMnt(){
   document.getElementById("mntStats").innerHTML=`<div class="grid kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:10px 0"><div class="card"><div class="muted">Sensori letti</div><div class="kpi-num">${records.length}</div></div><div class="card"><div class="muted">STA ≤ 45</div><div class="kpi-num">${critical.length}</div></div><div class="card"><div class="muted">Cassa rilevata</div><div class="kpi-num">${escapeHtml(cassa)}</div></div></div>`;
   document.getElementById("mntCharts").innerHTML=`<h2>STA e I_I per sensore</h2><div style="height:300px"><canvas id="sensorChart" style="width:100%;height:100%"></canvas></div><h2>PW4 per sensore</h2><div style="height:240px"><canvas id="pwChart" style="width:100%;height:100%"></canvas></div>`;
   drawSensorChart("sensorChart",records,["STA","I_I"]);drawSensorChart("pwChart",records,["PW4"]);
-  document.getElementById("mntTable").innerHTML=table(["ADD / Sensore","I","I_I","STA","PW4"],records.map(r=>`<tr><td>${r.ADD}</td><td>${r.I??"—"}</td><td>${r.I_I??"—"}</td><td style="${r.STA!==null&&r.STA<=45?'color:var(--red);font-weight:800':''}">${r.STA??"—"}</td><td>${r.PW4??"—"}</td></tr>`).join(""));
+  document.getElementById("mntTable").innerHTML=`<details class="sensor-table-details"><summary>📊 Mostra tabella completa dei sensori (${records.length})</summary><div style="margin-top:12px">${table(["ADD / Sensore","I","I_I","STA","PW4"],records.map(r=>`<tr><td>${r.ADD}</td><td>${r.I??"—"}</td><td>${r.I_I??"—"}</td><td style="${r.STA!==null&&r.STA<=45?'color:var(--red);font-weight:800':''}">${r.STA??"—"}</td><td>${r.PW4??"—"}</td></tr>`).join(""))}</div></details>`;
   msg.textContent=`Analisi completata: ${file.name} · ${cassa} · ${critical.length} sensori con STA ≤ 45.`;
  }catch(err){msg.textContent="Errore: "+(err.message||String(err));}
 }
