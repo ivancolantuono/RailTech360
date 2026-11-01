@@ -109,6 +109,20 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
 .topbar .btn:hover{background:#263b58!important;border-color:#4c6b91!important}
 @media(max-width:700px){.sidebar{box-shadow:15px 0 50px rgba(0,0,0,.35)!important}}
 
+
+/* CCM analyzer */
+.ccm-grid{display:grid;grid-template-columns:repeat(7,minmax(105px,1fr));gap:7px;align-items:start}
+.ccm-word{border:1px solid var(--line,#d8dce2);border-radius:7px;overflow:hidden;background:#fff;margin-bottom:5px;min-width:0}
+.ccm-title{font-size:12px;font-weight:700;padding:7px;background:#f4f6f9;border-bottom:1px solid #ddd;color:#263246}
+.ccm-signal{position:relative;min-height:22px;line-height:22px;margin:2px;padding:0 5px;border-radius:3px;font-size:10px;font-family:Arial,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccm-off{background:#f1f1f1;color:#555}.ccm-on{background:#ffdede;color:#b00020;font-weight:700;border-left:4px solid #e00020}
+.ccm-led{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.ccm-led-off{background:#c9c9c9}.ccm-led-on{background:#e00020}
+.ccm-tip{display:none}.ccm-signal:hover{overflow:visible;z-index:2}.ccm-signal:hover .ccm-tip{display:block;position:absolute;left:0;top:100%;white-space:normal;background:#fff;border:1px solid #bbb;padding:6px;border-radius:4px;min-width:160px;box-shadow:0 4px 12px #0002;color:#333}
+.ccm-analog-row{display:flex;align-items:center;width:100%;margin:7px 0;gap:10px}.ccm-analog-name{width:75px;min-width:75px;font-size:12px;font-weight:600}.ccm-analog-value{width:85px;min-width:85px;text-align:right;font-family:Consolas,monospace;font-size:13px;font-weight:bold}.ccm-analog-track{flex:1;height:14px;background:#eee;border:1px solid #d0d0d0;border-radius:8px;overflow:hidden}.ccm-analog-fill{height:100%;background:#7b61a8;border-radius:8px}
+#ccmTimeline{accent-color:#2563eb}
+@media(max-width:1200px){.ccm-grid{grid-template-columns:repeat(4,minmax(100px,1fr))}}
+@media(max-width:700px){.ccm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ccm-analog-name{width:55px;min-width:55px}.ccm-analog-value{width:65px;min-width:65px}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -140,6 +154,7 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
     <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
     <button data-page="sensori"><span class="ico">⌁</span>Misurazione sensori</button>
     <button data-page="fde"><span class="ico">⌕</span>Analizza Log FDE</button>
+    <button data-page="ccm"><span class="ico">▦</span>Analizza Log CCM</button>
   </nav></div>
 
 </aside>
@@ -150,6 +165,100 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
 </div>
 <div class="toast" id="toast"></div>
 <script>
+
+const CCM_ANALOG_SIGNALS=["vTVL", "vTV1", "iTA1M", "iTA2M", "iTA", "vTVI", "da1", "db1", "ta1", "tb1", "dfr", "tcha", "tchb", "vref", "Vref", "OVPD", "TOVPD", "vF", "dvF", "vL", "dvL", "vFdvf", "vLdvl"];
+const CCM_BIT_MAP={"sCCa": {"0": "Test", "1": "c2qok", "2": "chAok", "3": "chBokw", "4": "abPhw", "5": "civc", "6": "pwm2q", "7": "my_dspok", "8": "anticipoTT", "9": "3KON", "10": "SCAR2Q", "11": "okThCHPIND1", "12": "okThCHPIND2", "13": "okThINTAIR", "14": "okThHEATSINK", "15": "parzCCon"}, "PSWA": {"0": "UNDERVOLTPRIM3K", "1": "dvfProtLed", "2": "dvlProtLed", "3": "dvfProtLed2", "4": "dvlProtLed2", "5": "koThCHPIND1", "6": "koThCHPIND2", "7": "koThINTAIR", "8": "koThHEATSINK", "9": "PcuKO", "10": "pswCHPIND1_HOTMAX", "11": "pswUNDERVOLTPRIM", "12": "pswOPENFAILBYS", "13": "pswCHPIND2_HOTMAX", "14": "pswUNDERVOLTSEC", "15": "pswOPENFAILBY"}, "PSWB": {"0": "pswINTAIR_HOTMAX", "1": "pswUNBASUPERV", "2": "pswkoTA", "3": "-----", "4": "UNDERVOLTLINE3K", "5": "pswINCALTI", "6": "DISCHA_FAIL", "7": "HEATSINK_HOTMAX", "8": "pswCLOSEFAILBY", "9": "TASUPERV", "10": "CCMESCL", "11": "CHARGESUPERV", "12": "OVPRESHOT", "13": "TEMPSCHEDHOT", "14": "UNDERVOLTLINE", "15": "CIDko"}, "PHW1": {"0": "-----", "1": "-----", "2": "-----", "3": "TVI", "4": "-----", "5": "-----", "6": "-----", "7": "TA1", "8": "TA2", "9": "TA", "10": "TV1", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "PHW2": {"0": "-----", "1": "-----", "2": "-----", "3": "-----", "4": "earthfault", "5": "-----", "6": "-----", "7": "-----", "8": "-----", "9": "-----", "10": "-----", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "PHW3": {"0": "DiaUp1", "1": "DiaUp2", "2": "DiaUp3", "3": "DiaUp4", "4": "DiaUp5", "5": "DiaDown1", "6": "DiaDown2", "7": "DiaDown3", "8": "DiaDown4", "9": "DiaDown5", "10": "-----", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "PHW4": {"0": "-----", "1": "-----", "2": "-----", "3": "powergood", "4": "-----", "5": "-----", "6": "-----", "7": "-----", "8": "-----", "9": "-----", "10": "-----", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "flcom": {"0": "euroDC", "1": "euroAC", "2": "Bianco", "3": "linea3k", "4": "kv1_5", "5": "chfresc", "6": "cllon", "7": "mant", "8": "scafil2Q", "9": "scafilOVP", "10": "PrtSd", "11": "FstSd", "12": "SftSd", "13": "PrtBlk", "14": "testCID", "15": "trNeutro"}, "stdi": {"0": "copenfb", "1": "cclosefb", "2": "coveropen", "3": "fastopenLCB", "4": "-----", "5": "earthfail", "6": "-----", "7": "device-address0", "8": "device-address1", "9": "device-address2", "10": "-----", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "stdo": {"0": "closeby", "1": "cidactive", "2": "cidclose", "3": "earth", "4": "-----", "5": "-----", "6": "-----", "7": "-----", "8": "-----", "9": "-----", "10": "-----", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "PCUc": {"0": "Bianco", "1": "AcLCBclosed", "2": "DcLCBclosed", "3": "Chfresc", "4": "StartCCM", "5": "StartLCM", "6": "Mant", "7": "FPA", "8": "resetEsc", "9": "TestCID", "10": "TrNeutro", "11": "scafil2Q", "12": "scafilOVP", "13": "-----", "14": "-----", "15": "-----"}, "PCUs": {"0": "Dc1_5kV_SEL", "1": "Dc1_5kV_CONF", "2": "Dc1_5kV_LINEoN", "3": "Dc3kV_SEL", "4": "Dc3kV_CONF", "5": "Dc3kV_LINEoN", "6": "Ac15kV_SEL", "7": "Ac25kV_SEL", "8": "setHIL", "9": "Dc3kV_LcbClosed", "10": "Dc1_5kV_LcbClosed", "11": "-----", "12": "-----", "13": "-----", "14": "-----", "15": "-----"}, "msf": {"0": "NOCGF", "1": "2QOFF", "2": "2QBIA", "3": "3KON", "4": "SCAR2Q", "5": "1,5K ON", "6": "PROT", "7": "PROTBLO", "8": "FASTSHUT", "9": "SOFTSHUT", "10": "-----", "11": "AUTORESET", "12": "-----", "13": "ESCL", "14": "-----", "15": "-----"}};
+const CCM_DIGITAL_DESCRIPTIONS={"UNDERVOLTPRIM3K": "Spegnimento CCM: bassa tensione DC-Link primario", "dvfProtLed": "Elevato gradiente di tensione di filtro", "dvlProtLed": "Elevato gradiente di tensione di linea", "dvfProtLed2": "Doppio gradiente elevato di tensione di filtro", "dvlProtLed2": "Doppio gradiente elevato di tensione di linea", "koThCHPIND1": "Spegnimento CCM: misura errata di temperatura dell'induttanza di fase 1", "koThCHPIND2": "Spegnimento CCM: misura errata di temperatura dell'induttanza di fase 2", "koThINTAIR": "Spegnimento CCM: misura errata di temperatura dell'aria interna", "koThHEATSINK": "Spegnimento CCM: misura errata di temperatura del dissipatore", "PcuKO": "Spegnimento CCM: comunicazione con PCU assente", "pswCHPIND1_HOTMAX": "Spegnimento CCM: sovra-temperatura induttore fase 1", "pswUNDERVOLTPRIM": "Spegnimento CCM: bassa tensione DC-Link primario (conf. 1.5kV)", "pswOPENFAILBYS": "Spegnimento CCM: incongruenza stato del contattore di bypass", "pswCHPIND2_HOTMAX": "Spegnimento CCM: sovra-temperatura induttore fase 2", "pswUNDERVOLTSEC": "Spegnimento CCM: bassa tensione DC-Link secondario", "pswOPENFAILBY": "Spegnimento CCM: mancata apertura del contattore di bypass", "pswINTAIR_HOTMAX": "Spegnimento CCM: sovra-temperatura aria interna", "pswUNBASUPERV": "Spegnimento CCM: correnti di fase sbilanciate", "pswkoTA": "Spegnimento CCM: misura errata della corrente di linea", "UNDERVOLTLINE3K": "Spegnimento CCM: tensione di linea DC fuori range (conf. 3 kV)", "pswINCALTI": "Spegnimento CCM: incongruenza stato del contattore di bypass", "DISCHA_FAIL": "Spegnimento CCM: scarica filtri non riuscita", "HEATSINK_HOTMAX": "Spegnimento CCM: sovra-temperatura dissipatore", "pswCLOSEFAILBY": "Spegnimento CCM: mancata chiusura del contattore di bypass", "TASUPERV": "Spegnimento CCM: misura errata della corrente di linea", "CCMESCL": "CCM escluso", "CHARGESUPERV": "Spegnimento CCM: pre-carica del filtro DC-Link primario non riuscita", "OVPRESHOT": "Spegnimento CCM: sovratemperatura della resistenza di OVP", "TEMPSCHEDHOT": "Spegnimento CCM: sovratemperatura della scheda elettronica NPC della MOCU/C", "UNDERVOLTLINE": "Spegnimento CCM: tensione di linea DC è fuori range (conf. 1.5 kV)", "CIDko": "Spegnimento CCM: anomalia attuazione Fast Open LCB (CID)", "TVI": "Spegnimento CCM: sovra-tensione DC-Link secondario", "TA1": "Spegnimento CCM: sovra-corrente della fase 1", "TA2": "Spegnimento CCM: sovra-corrente della fase 2", "TA": "Spegnimento CCM: sovracorrente della corrente di linea", "TV1": "Spegnimento CCM: sovra-tensione DC-Link primario", "earthfault": "Guasto verso terra", "DiaUp1": "Spegnimento CCM: diagnostica di fase 1 IGBT ALTO", "DiaUp2": "Spegnimento CCM: diagnostica di fase 2 IGBT ALTO", "DiaUp3": "Spegnimento CCM: diagnostica di fase chopper OVP fase A IGBT ALTO", "DiaUp4": "Spegnimento CCM: diagnostica di fase chopper OVP fase B IGBT ALTO", "DiaUp5": "Diagnostica UP 5", "DiaDown1": "Spegnimento CCM: diagnostica di fase 1 IGBT BASSO", "DiaDown2": "Spegnimento CCM: diagnostica di fase 2 IGBT BASSO", "DiaDown3": "Diagnostica DOWN 3", "DiaDown4": "Diagnostica DOWN 4", "DiaDown5": "Diagnostica DOWN 5", "powergood": "Spegnimento CCM: anomalia alimentazione MOCU/C", "Test": "Self test in corso", "okThCHPIND1": "Diagnostica termosonda fase 1 ok", "okThCHPIND2": "Diagnostica termosonda fase 2 ok", "okThINTAIR": "Diagnostica termosonda aria ok", "euroDC": "Selezionata linea DC", "euroAC": "Selezionata linea AC", "Bianco": "Prova in bianco"};
+const CCM_ANALOG_DESCRIPTIONS={"vTVL": "Tensione di linea", "vTV1": "Tensione DC-link Primario", "iTA1M": "Corrente media di uscita della gamba 1", "iTA2M": "Corrente media di uscita della gamba 2", "iTA": "Corrente di linea", "vTVI": "Tensione DC-link Secondario", "da1": "Deuty cycle gamba 1", "db1": "De", "ta1": "Durata impuls0 gamba 1", "tb1": "Descrizione tb1", "dfr": "Descrizione dfr", "tcha": "Durata impulso OVP 1", "tchb": "Descrizione tchb", "vref": "Riferimento tensione DC-link secondario", "OVPD": "Descrizione OVPD", "TOVPD": "Descrizione TOVPD", "vF": "Tensione vF", "dvF": "Variazione tensione vF", "vL": "Tensione linea", "dvL": "Variazione tensione linea", "vFdvf": "Descrizione vFdvf", "vLdvl": "Descrizione vLdvl"};
+const CCM_DIGITAL_WORDS=["sCCa", "PSWA", "PSWB", "PHW1", "PHW2", "PHW3", "PHW4", "flcom", "stdi", "stdo", "PCUc", "PCUs", "msf"];
+
+
+function ccmPage(){
+ return head("Analizza Log CCM","Carica un file .CAP, consulta gli eventi Summary e analizza i campioni LL.")+
+ `<section class="card">
+  <div class="field"><label for="ccmFile">File CCM (.CAP)</label><input id="ccmFile" type="file" accept=".cap,.CAP,text/plain"></div>
+  <p class="muted tiny" style="margin-top:8px">L'analisi viene eseguita nel browser: il file non viene caricato su Supabase.</p>
+  <div id="ccmMessage" class="muted" style="padding:12px 0">Seleziona un file .CAP per iniziare.</div>
+ </section><div id="ccmWorkspace"></div>`;
+}
+const CCM_MAX_FIELDS=6;
+let ccmParsed=null, ccmFiltered=[], ccmSelectedRec=null;
+function ccmEsc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function ccmSplitDescription(desc){
+ let left=desc,description="";
+ if(desc.includes(" - ")){[left,description]=[desc.slice(0,desc.indexOf(" - ")),desc.slice(desc.indexOf(" - ")+3)];}
+ let fields=left.split(";").map(x=>x.trim()).filter(Boolean).slice(0,CCM_MAX_FIELDS);
+ while(fields.length<CCM_MAX_FIELDS)fields.push("");
+ return {fields,description:description.trim()};
+}
+function ccmParseText(text){
+ const summary=[],llBlocks={};let currentRec=null,inLL=false,columns=[];
+ const lines=text.replace(/^\uFEFF/,"").split(/\r?\n/);
+ const smRe=/^Rec:\s+(\d+)\s+Code:\s+([0-9A-Fa-f]+)\s+Date:(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2}:\d{2}\.\d{2})\s+-\s+(.*)$/;
+ const llHeader=/^\s*N\.\s+/, llRow=/^\s*(-?\d+)\s+(.*)$/;
+ for(const line of lines){
+  const m=line.match(smRe);
+  if(m){const d=ccmSplitDescription(m[5]);const rec=Number(m[1]);summary.push([rec,m[2],m[3],m[4],...d.fields,d.description]);llBlocks[rec]=[];currentRec=rec;inLL=false;continue;}
+  if(llHeader.test(line)){columns=line.trim().split(/\s+/);inLL=true;continue;}
+  if(inLL&&currentRec!==null){const r=line.match(llRow);if(!r)continue;const values=r[2].trim().split(/\s+/);if(values.length<columns.length-1)continue;const row={N:Number(r[1])};columns.slice(1).forEach((col,i)=>row[col]=values[i]);llBlocks[currentRec].push(row);}
+ }
+ return {summary,llBlocks};
+}
+function ccmDecodeWord(hexValue,bitMap){let value=parseInt(String(hexValue),16);if(!Number.isFinite(value))value=0;const result={};Object.entries(bitMap).forEach(([bit,name])=>{if(name!=="-----")result[name]=(value>>Number(bit))&1;});return result;}
+function ccmDecodeRec(row){const states={};CCM_DIGITAL_WORDS.forEach(word=>{if(CCM_BIT_MAP[word]&&Object.prototype.hasOwnProperty.call(row,word))Object.assign(states,ccmDecodeWord(row[word],CCM_BIT_MAP[word]));});return states;}
+function ccmRenderSummary(rows){
+ if(!rows.length)return `<div class="notice">Nessun evento trovato.</div>`;
+ const heads=["REC","CODE","DATE","TIME",..."123456".split("").map(n=>"F"+n),"DESCRIZIONE"];
+ return `<div class="table-wrap"><table><thead><tr>${heads.map(x=>`<th>${x}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td>${ccmEsc(r[0])}</td><td>${ccmEsc(r[1])}</td><td>${ccmEsc(r[2])}</td><td>${ccmEsc(r[3])}</td>${r.slice(4,10).map(x=>`<td>${ccmEsc(x)}</td>`).join("")}<td>${ccmEsc(r[10])}</td></tr>`).join("")}</tbody></table></div>`;
+}
+function ccmRenderWord(word,states){
+ const signals=CCM_BIT_MAP[word]||{};
+ const items=Object.entries(signals).filter(([bit,name])=>name!=="-----").map(([bit,name])=>{
+  const on=!!states[name],desc=CCM_DIGITAL_DESCRIPTIONS[name]||"";
+  return `<div class="ccm-signal ${on?"ccm-on":"ccm-off"}" title="${ccmEsc(desc)}"><span class="ccm-led ${on?"ccm-led-on":"ccm-led-off"}"></span>${ccmEsc(name)}${desc?`<span class="ccm-tip">${ccmEsc(desc)}</span>`:""}</div>`;
+ }).join("");
+ return `<div class="ccm-word"><div class="ccm-title">${ccmEsc(word)}</div>${items}</div>`;
+}
+function ccmRenderAnalog(row){
+ const maxes={vTVL:5000,vTV1:5000,iTA1M:100,iTA2M:100,iTA:100,vTVI:5000,da1:100,db1:100,ta1:100,tb1:100,dfr:100,tcha:100,tchb:100,vref:100,Vref:100,OVPD:5000,TOVPD:100,vF:5000,dvF:5000,vL:5000,dvL:5000,vFdvf:5000,vLdvl:5000};
+ return CCM_ANALOG_SIGNALS.map(signal=>{
+  const raw=row[signal],empty=raw===undefined||raw===null||raw==="";
+  const num=empty?NaN:Number(String(raw).replace(",",".")),pct=Number.isFinite(num)?Math.min(100,Math.abs(num)/(maxes[signal]||100)*100):0;
+  return `<div class="ccm-analog-row"><div class="ccm-analog-name" title="${ccmEsc(CCM_ANALOG_DESCRIPTIONS[signal]||"")}">${ccmEsc(signal)}</div><div class="ccm-analog-value">${empty?"—":ccmEsc(raw)}</div><div class="ccm-analog-track"><div class="ccm-analog-fill" style="width:${pct.toFixed(1)}%"></div></div></div>`;
+ }).join("");
+}
+function ccmRenderWorkspace(){
+ const host=document.getElementById("ccmWorkspace");if(!host||!ccmParsed)return;
+ const q=(document.getElementById("ccmSearch")?.value||"").trim().toLowerCase();
+ ccmFiltered=ccmParsed.summary.filter(r=>!q||String(r[10]||"").toLowerCase().includes(q));
+ const recOptions=ccmFiltered.map(r=>({rec:Number(r[0]),desc:String(r[10]||"").trim()}));
+ if(!recOptions.some(x=>x.rec===ccmSelectedRec))ccmSelectedRec=recOptions.length?recOptions[0].rec:null;
+ const selected=recOptions.find(x=>x.rec===ccmSelectedRec),ll=selected?ccmParsed.llBlocks[selected.rec]||[]:[];
+ let index=Number(document.getElementById("ccmTimeline")?.value||0);if(index>=ll.length)index=Math.max(0,ll.length-1);
+ const current=ll[index]||{},states=ccmDecodeRec(current);
+ host.innerHTML=`<section class="card" style="margin-top:16px"><div class="pagehead" style="margin-bottom:14px"><div><h2 style="margin:0">Eventi Summary</h2><p>Totale eventi: ${ccmParsed.summary.length}</p></div></div>
+ <div class="toolbar"><input id="ccmSearch" placeholder="Cerca nella descrizione…" value="${ccmEsc(q)}"><span class="muted tiny">${ccmFiltered.length} risultati</span></div>${ccmRenderSummary(ccmFiltered)}</section>
+ <section class="card" style="margin-top:16px"><h2>Analisi campioni LL</h2>
+ ${recOptions.length?`<div class="field"><label for="ccmRecSelect">Seleziona REC</label><select id="ccmRecSelect">${recOptions.map(o=>`<option value="${o.rec}" ${o.rec===ccmSelectedRec?"selected":""}>REC ${o.rec}${o.desc?" — "+ccmEsc(o.desc):""}</option>`).join("")}</select></div>
+ ${ll.length?`<div style="margin-top:18px"><label for="ccmTimeline">Timeline campione: <b id="ccmTimelineLabel">${index+1} / ${ll.length}</b></label><input id="ccmTimeline" type="range" min="0" max="${ll.length-1}" value="${index}" style="width:100%;margin:10px 0"><div class="notice">Campione <b>${index+1} / ${ll.length}</b> &nbsp; · &nbsp; N: <b>${ccmEsc(current.N??"—")}</b> ${selected?.desc?`&nbsp; · &nbsp; ${ccmEsc(selected.desc)}`:""}</div>
+ <h3>🔌 Segnali digitali</h3><div class="ccm-grid">${CCM_DIGITAL_WORDS.map(w=>ccmRenderWord(w,states)).join("")}</div>
+ <h3 style="margin-top:22px">📈 Segnali analogici</h3><div>${ccmRenderAnalog(current)}</div>
+ </div>`:`<div class="notice">Nessun campione LL disponibile per REC ${ccmSelectedRec}.</div>`}
+ `:`<div class="notice">Nessun evento corrisponde alla ricerca.</div>`}</section>`;
+ document.getElementById("ccmSearch")?.addEventListener("input",()=>{const pos=document.getElementById("ccmSearch").selectionStart;ccmRenderWorkspace();const el=document.getElementById("ccmSearch");el.focus();el.setSelectionRange(pos,pos);});
+ document.getElementById("ccmRecSelect")?.addEventListener("change",e=>{ccmSelectedRec=Number(e.target.value);ccmRenderWorkspace();});
+ document.getElementById("ccmTimeline")?.addEventListener("input",e=>{const n=Number(e.target.value),r=ccmFiltered.find(x=>Number(x[0])===ccmSelectedRec);const sample=(ccmParsed.llBlocks[ccmSelectedRec]||[])[n]||{};const st=ccmDecodeRec(sample);document.getElementById("ccmTimelineLabel").textContent=`${n+1} / ${(ccmParsed.llBlocks[ccmSelectedRec]||[]).length}`;const notice=host.querySelector(".notice");if(notice)notice.innerHTML=`Campione <b>${n+1} / ${(ccmParsed.llBlocks[ccmSelectedRec]||[]).length}</b> &nbsp; · &nbsp; N: <b>${ccmEsc(sample.N??"—")}</b> ${r&&r[10]?`&nbsp; · &nbsp; ${ccmEsc(r[10])}`:""}`;const grid=host.querySelector(".ccm-grid");if(grid)grid.innerHTML=CCM_DIGITAL_WORDS.map(w=>ccmRenderWord(w,st)).join("");const analog=host.querySelector(".ccm-analog-row")?.parentElement;if(analog)analog.innerHTML=ccmRenderAnalog(sample);});
+}
+document.addEventListener("change",async e=>{
+ if(e.target?.id!=="ccmFile"||!e.target.files?.[0])return;
+ const msg=document.getElementById("ccmMessage");msg.textContent="Lettura e analisi del file…";
+ try{const text=await e.target.files[0].text();ccmParsed=ccmParseText(text);ccmSelectedRec=null;
+ if(!ccmParsed.summary.length){msg.innerHTML='<span style="color:#b45309">Nessun evento Summary trovato. Verifica che il file sia un .CAP leggibile come testo.</span>';document.getElementById("ccmWorkspace").innerHTML="";return;}
+ msg.innerHTML=`File analizzato: <b>${ccmEsc(e.target.files[0].name)}</b> · ${ccmParsed.summary.length} eventi Summary.`;
+ ccmRenderWorkspace();
+ }catch(err){msg.textContent="Errore nella lettura del file: "+(err.message||String(err));}
+});
+
 const initial = {
   interventi:[
     {id:"INT-0268",treno:"ETR1000 · 102",cassa:"M6",titolo:"Sostituzione modulo CCM1",tecnico:"Marco R.",data:"2026-10-30",stato:"In lavorazione",esito:"",note:"Verifica funzionale al termine della sostituzione."},
@@ -170,7 +279,7 @@ try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClo
 function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
 let currentPage="cercaComponente";
 const content=document.getElementById("content");
-const pages={cercaComponente:"Cerca componente",openitem:"Open Item",sensori:"Misurazione sensori",fde:"Analizza Log FDE"};
+const pages={cercaComponente:"Cerca componente",openitem:"Open Item",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM"};
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
@@ -399,7 +508,7 @@ function applyFDEFilters(){let q=(document.getElementById("fdeSearch")?.value||"
 function exportFDECSV(){const q=(document.getElementById("fdeSearch")?.value||"").toLowerCase(),o=document.getElementById("fdeOrigin")?.value||"",ev=document.getElementById("fdeEvent")?.value||"",start=document.getElementById("fdeDateStart")?.value||"",end=document.getElementById("fdeDateEnd")?.value||"";const from=start?new Date(start+"T00:00:00"):null,to=end?new Date(end+"T23:59:59.999"):null;let rows=fdeRows.filter(r=>(!from||r.timestamp>=from)&&(!to||r.timestamp<=to)&&(!o||r.origine===o)&&(!ev||(ev==="__nessuno"?!r.evento:r.evento===ev))&&(!q||[r.origine,r.dataset,r.segnale,r.cassa,r.number,r.data_val,r.descrizione,r.evento,r.valore,fdeDate(r.timestamp)].join(" ").toLowerCase().includes(q)));const cols=[["Time",r=>fdeDate(r.timestamp)],["Origine",r=>r.origine],["Dataset",r=>r.dataset],["Segnale",r=>r.segnale],["Cassa",r=>r.cassa],["Number",r=>r.number],["Data",r=>r.data_val],["Descrizione",r=>r.descrizione],["Evento",r=>r.evento],["Valore grezzo",r=>r.valore]];const csv=[cols.map(c=>c[0]),...rows.map(r=>cols.map(c=>c[1](r)))].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Analisi_Log_FDE.csv";a.click();URL.revokeObjectURL(url)}
 function resetFDE(){fdeRows=[];const a=document.getElementById("fdeDM1"),b=document.getElementById("fdeDM8");if(a)a.value="";if(b)b.value="";document.getElementById("fdeMessage").textContent="Seleziona almeno un file per iniziare.";document.getElementById("fdeResults").innerHTML=""}
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,sensori:sensoriPage,fde:fdePage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
