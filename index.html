@@ -33,6 +33,25 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 @media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.content{padding:22px 20px}.topbar{padding:0 20px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
 @media(max-width:700px){.app{display:block}.sidebar{display:none;position:fixed;z-index:8;inset:0 auto 0 0;width:260px;box-shadow:15px 0 50px #0009}.sidebar.open{display:flex}.topbar{height:64px;padding:0 15px}.mobile-menu{display:inline-block}.content{padding:20px 14px}.pagehead{display:block}.pagehead h1{font-size:24px}.pagehead .actions{margin-top:15px}.kpis{gap:10px}.card{padding:14px}.kpi-num{font-size:25px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.badge-demo{display:none}}
 
+
+/* Open Item: tabella compatta che rientra nella larghezza della pagina */
+#openItemResults .table-wrap{width:100%;max-width:100%;overflow-x:hidden!important}
+#openItemResults .table-wrap table{width:100%!important;min-width:0!important;table-layout:fixed;border-collapse:collapse}
+#openItemResults .table-wrap th,#openItemResults .table-wrap td{padding:8px 6px;font-size:11px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:top}
+#openItemResults .table-wrap th{font-size:9px;letter-spacing:.35px;line-height:1.25}
+#openItemResults .table-wrap th:nth-child(1),#openItemResults .table-wrap td:nth-child(1){width:10%}
+#openItemResults .table-wrap th:nth-child(2),#openItemResults .table-wrap td:nth-child(2){width:20%}
+#openItemResults .table-wrap th:nth-child(3),#openItemResults .table-wrap td:nth-child(3){width:11%}
+#openItemResults .table-wrap th:nth-child(4),#openItemResults .table-wrap td:nth-child(4){width:17%}
+#openItemResults .table-wrap th:nth-child(5),#openItemResults .table-wrap td:nth-child(5){width:10%}
+#openItemResults .table-wrap th:nth-child(6),#openItemResults .table-wrap td:nth-child(6){width:9%}
+#openItemResults .table-wrap th:nth-child(7),#openItemResults .table-wrap td:nth-child(7){width:11%}
+#openItemResults .table-wrap th:nth-child(8),#openItemResults .table-wrap td:nth-child(8){width:12%}
+#openItemResults .table-wrap td:nth-child(2),#openItemResults .table-wrap td:nth-child(4){min-width:0!important;max-width:none!important;white-space:normal!important}
+#openItemResults .table-wrap td .actions{display:flex;flex-direction:column;gap:5px;align-items:stretch}
+#openItemResults .table-wrap td .actions .btn{font-size:10px;padding:5px 6px;white-space:normal;line-height:1.2}
+@media(max-width:900px){#openItemResults .table-wrap th,#openItemResults .table-wrap td{padding:6px 4px;font-size:10px}#openItemResults .table-wrap th{font-size:8px}}
+
 /* Autenticazione Supabase */
 .auth-overlay{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top,#18345b 0%,#0a1020 60%);overflow:auto}
 .auth-card{width:min(100%,440px);background:#111b2e;border:1px solid #2b3b56;border-radius:18px;padding:28px;box-shadow:0 24px 80px #0008}
@@ -656,7 +675,7 @@ function renderOpenItemsFiltered(){
     <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
     <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
   const oiTableWrap=out.querySelector(".table-wrap");
-  if(oiTableWrap){oiTableWrap.style.maxHeight="420px";oiTableWrap.style.overflow="auto";oiTableWrap.style.borderRadius="10px";oiTableWrap.querySelectorAll("thead th").forEach(th=>{th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#101b2d";});}
+  if(oiTableWrap){oiTableWrap.style.maxHeight="420px";oiTableWrap.style.overflowY="auto";oiTableWrap.style.overflowX="hidden";oiTableWrap.style.width="100%";oiTableWrap.style.borderRadius="10px";oiTableWrap.querySelectorAll("thead th").forEach(th=>{th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#101b2d";});}
 }
 async function loadOpenItems(){
   const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
