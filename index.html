@@ -231,6 +231,40 @@ input,select,textarea{max-width:100%;}
   .crumb{font-size:10px;}
 }
 
+
+/* Esperienza smartphone: navigazione inferiore e pannello strumenti */
+.mobile-bottom-nav,.mobile-tools-backdrop,.mobile-tools-sheet{display:none}
+@media(max-width:700px){
+  body{padding-bottom:calc(70px + env(safe-area-inset-bottom));}
+  .topbar{position:sticky;top:0;z-index:7;background:rgba(10,16,32,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);}
+  .topbar .crumb{font-size:12px;font-weight:650;}
+  .topbar .mobile-menu{display:none!important}
+  .top-actions .avatar{width:34px;height:34px;font-size:12px;}
+  .content{padding:14px 10px calc(26px + env(safe-area-inset-bottom));}
+  .pagehead{padding:2px 2px 0;}
+  .pagehead h1{font-size:24px;letter-spacing:-.35px;}
+  .card{box-shadow:0 5px 18px rgba(0,0,0,.10);}
+  .mobile-bottom-nav{display:grid;position:fixed;z-index:20;left:0;right:0;bottom:0;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:7px 7px calc(7px + env(safe-area-inset-bottom));background:rgba(13,22,40,.97);border-top:1px solid var(--line);backdrop-filter:blur(18px);}
+  .mobile-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:49px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:10px;font-weight:650;padding:4px 2px;}
+  .mobile-bottom-nav button .nav-emoji{font-size:19px;line-height:1.15;}
+  .mobile-bottom-nav button.active{background:rgba(78,161,255,.15);color:#79b8ff;}
+  .mobile-tools-backdrop{display:block;position:fixed;inset:0;z-index:29;background:rgba(0,0,0,.56);opacity:0;pointer-events:none;transition:opacity .18s;}
+  .mobile-tools-backdrop.open{opacity:1;pointer-events:auto;}
+  .mobile-tools-sheet{display:block;position:fixed;z-index:30;left:0;right:0;bottom:0;max-height:78dvh;overflow:auto;padding:12px 14px calc(18px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;border:1px solid var(--line);background:#101b2e;transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -15px 50px rgba(0,0,0,.35);}
+  .mobile-tools-sheet.open{transform:translateY(0);}
+  .mobile-tools-grabber{width:38px;height:4px;border-radius:9px;background:#52627b;margin:0 auto 14px;}
+  .mobile-tools-title{font-size:17px;font-weight:750;margin:0 0 10px 3px;}
+  .mobile-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .mobile-tools-grid button{display:flex;align-items:center;gap:10px;text-align:left;min-height:58px;padding:11px;border:1px solid var(--line);border-radius:13px;background:#15223a;color:var(--text);font-weight:650;}
+  .mobile-tools-grid button .ico{display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;border-radius:10px;background:rgba(78,161,255,.13);color:var(--cyan);font-size:18px;}
+  .mobile-tools-grid button.active{border-color:var(--blue);background:rgba(78,161,255,.13);}
+  .table-wrap{border-radius:10px;scrollbar-width:thin;}
+  .table-wrap:after{content:"Scorri lateralmente per vedere tutte le colonne";display:block;position:sticky;left:0;width:max-content;max-width:100%;padding:5px 8px;color:var(--muted);font-size:10px;background:rgba(10,16,32,.88);}
+  .table-wrap table{margin-bottom:2px;}
+  .form-actions .btn{min-height:46px;}
+  .btn,button{touch-action:manipulation;}
+}
+@media(min-width:701px){.mobile-bottom-nav,.mobile-tools-backdrop,.mobile-tools-sheet{display:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -931,6 +965,37 @@ document.addEventListener("change",function(e){
  const file=el.files[0];
  if(el.id==="logFile"){const info=document.getElementById("fileInfo");if(info)info.textContent="File selezionato: "+file.name+" ("+Math.max(1,Math.round(file.size/1024))+" KB)";}
 });
+
+
+// Navigazione mobile dedicata: scorciatoie inferiori + pannello "Altro".
+(function setupMobileNavigation(){
+  const nav=document.getElementById('nav');
+  if(!nav || document.getElementById('mobileBottomNav')) return;
+  const all=[...nav.querySelectorAll('button[data-page]')].map(b=>({page:b.dataset.page,label:b.textContent.trim(),icon:b.querySelector('.ico')?.textContent.trim()||'•'}));
+  const shortcuts=[
+    {page:'cercaComponente',label:'Cerca',icon:'⌕'},
+    {page:'openitem',label:'Open Item',icon:'⚠'},
+    {page:'sensori',label:'Sensori',icon:'⌁'},
+    {page:'__more',label:'Altro',icon:'☰'}
+  ];
+  const bar=document.createElement('nav');bar.className='mobile-bottom-nav';bar.id='mobileBottomNav';bar.setAttribute('aria-label','Navigazione principale mobile');
+  shortcuts.forEach(item=>{const b=document.createElement('button');b.type='button';b.dataset.page=item.page;b.innerHTML=`<span class="nav-emoji" aria-hidden="true">${item.icon}</span><span>${item.label}</span>`;b.addEventListener('click',()=>{if(item.page==='__more'){openTools();return}go(item.page);closeTools();updateActive()});bar.appendChild(b)});
+  document.body.appendChild(bar);
+  const backdrop=document.createElement('div');backdrop.className='mobile-tools-backdrop';backdrop.id='mobileToolsBackdrop';backdrop.addEventListener('click',closeTools);document.body.appendChild(backdrop);
+  const sheet=document.createElement('section');sheet.className='mobile-tools-sheet';sheet.id='mobileToolsSheet';sheet.setAttribute('aria-label','Altre sezioni');
+  sheet.innerHTML='<div class="mobile-tools-grabber"></div><h2 class="mobile-tools-title">Tutti gli strumenti</h2><div class="mobile-tools-grid" id="mobileToolsGrid"></div>';
+  document.body.appendChild(sheet);
+  const grid=sheet.querySelector('#mobileToolsGrid');
+  all.forEach(item=>{const b=document.createElement('button');b.type='button';b.dataset.page=item.page;b.innerHTML=`<span class="ico" aria-hidden="true">${item.icon}</span><span>${item.label}</span>`;b.addEventListener('click',()=>{go(item.page);closeTools();updateActive()});grid.appendChild(b)});
+  function openTools(){backdrop.classList.add('open');sheet.classList.add('open');document.body.style.overflow='hidden';}
+  function closeTools(){backdrop.classList.remove('open');sheet.classList.remove('open');document.body.style.overflow='';}
+  function updateActive(){const page=window.currentPage||document.querySelector('#nav button.active')?.dataset.page;bar.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===page||(b.dataset.page==='__more'&&all.some(x=>x.page===page&& !['cercaComponente','openitem','sensori'].includes(page)))));grid.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));}
+  const originalGo=window.go;
+  if(typeof originalGo==='function')window.go=function(page){originalGo(page);updateActive()};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTools()});
+  updateActive();
+})();
+
 </script>
 </body>
 </html>
