@@ -50,8 +50,9 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
     <div id="authMessage" class="auth-message" role="status" aria-live="polite"></div>
     <form id="authForm" class="auth-form">
       <div class="field" id="authNameField" hidden><label for="authName">Nome e cognome</label><input id="authName" name="name" autocomplete="name" maxlength="100" placeholder="Nome Cognome"></div>
+      <div class="field" id="authUsernameField" hidden><label for="authUsername">Nome utente</label><input id="authUsername" name="username" autocomplete="username" maxlength="30" pattern="[A-Za-z0-9._-]{3,30}" placeholder="Es. mario.rossi"><small class="muted tiny">Da 3 a 30 caratteri: lettere, numeri, punto, trattino o underscore.</small></div>
       <div class="field" id="authPhoneField" hidden><label for="authPhone">Telefono</label><input id="authPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="25" placeholder="Es. +39 333 1234567"></div>
-      <div class="field"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="nome@azienda.it"></div>
+      <div class="field" id="authEmailField"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="nome@azienda.it"></div>
       <div class="field" id="authPasswordField"><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="Almeno 8 caratteri"></div>
       <div class="field" id="authConfirmField" hidden><label for="authConfirm">Conferma password</label><input id="authConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8" placeholder="Ripeti la password"></div>
       <button class="btn primary" id="authSubmit" type="submit">Accedi</button>
@@ -467,11 +468,11 @@ function authMessage(text,type="error"){
 function clearAuthMessage(){const el=document.getElementById("authMessage");if(el){el.textContent="";el.className="auth-message"}}
 function showAuthMode(mode,message=""){
   authMode=mode;clearAuthMessage();
-  const title=document.getElementById("authTitle"),sub=document.getElementById("authSubtitle"),name=document.getElementById("authNameField"),phoneField=document.getElementById("authPhoneField"),phone=document.getElementById("authPhone"),pw=document.getElementById("authPasswordField"),confirm=document.getElementById("authConfirmField"),submit=document.getElementById("authSubmit"),links=document.getElementById("authLinks"),password=document.getElementById("authPassword"),email=document.getElementById("authEmail");
+  const title=document.getElementById("authTitle"),sub=document.getElementById("authSubtitle"),name=document.getElementById("authNameField"),usernameField=document.getElementById("authUsernameField"),username=document.getElementById("authUsername"),phoneField=document.getElementById("authPhoneField"),phone=document.getElementById("authPhone"),pw=document.getElementById("authPasswordField"),confirm=document.getElementById("authConfirmField"),submit=document.getElementById("authSubmit"),links=document.getElementById("authLinks"),password=document.getElementById("authPassword"),email=document.getElementById("authEmail"),emailField=document.getElementById("authEmailField");
   const isReset=mode==="reset",isSignup=mode==="signup",isUpdate=mode==="updatePassword";
   title.textContent=isSignup?"Crea un account":isReset?"Recupera password":isUpdate?"Imposta nuova password":"Accedi";
   sub.textContent=isSignup?"Registrati con la tua email e scegli una password.":isReset?"Ti invieremo un link per reimpostare la password.":isUpdate?"Scegli una nuova password per il tuo account.":"Accedi con il tuo account aziendale.";
-  name.hidden=!isSignup;phoneField.hidden=!isSignup;phone.required=isSignup;pw.hidden=isReset;confirm.hidden=!(isSignup||isUpdate);email.closest(".field").hidden=isUpdate;email.required=!isUpdate;password.required=!isReset;password.autocomplete=(isSignup||isUpdate)?"new-password":"current-password";
+  name.hidden=!isSignup;usernameField.hidden=!isSignup;username.required=isSignup;phoneField.hidden=!isSignup;phone.required=isSignup;pw.hidden=isReset;confirm.hidden=!(isSignup||isUpdate);emailField.hidden=isUpdate;email.required=!isUpdate;email.type="email";email.autocomplete="email";email.placeholder="nome@azienda.it";if(!isSignup&&!isReset&&!isUpdate){email.type="text";email.autocomplete="username";email.placeholder="Email oppure nome utente";emailField.querySelector("label").textContent="Email o nome utente";email.required=true;}else{emailField.querySelector("label").textContent="Email";}password.required=!isReset;password.autocomplete=(isSignup||isUpdate)?"new-password":"current-password";
   document.getElementById("authName").required=isSignup;document.getElementById("authConfirm").required=isSignup||isUpdate;
   submit.textContent=isSignup?"Registrati":isReset?"Invia link di recupero":isUpdate?"Salva nuova password":"Accedi";
   links.innerHTML=isSignup?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Hai già un account? Accedi</button>':isReset?'<button class="auth-link" type="button" onclick="showAuthMode(\'login\')">Torna all’accesso</button>':isUpdate?"":'<button class="auth-link" type="button" onclick="showAuthMode(\'reset\')">Password dimenticata?</button><button class="auth-link" type="button" onclick="showAuthMode(\'signup\')">Crea un account</button>';
@@ -492,14 +493,15 @@ async function finishAuthGate(session){
 }
 document.getElementById("authForm").addEventListener("submit",async e=>{
   e.preventDefault();const btn=document.getElementById("authSubmit");btn.disabled=true;const old=btn.textContent;btn.textContent="Attendi…";clearAuthMessage();
-  const email=document.getElementById("authEmail").value.trim();const password=document.getElementById("authPassword").value;const confirmPw=document.getElementById("authConfirm").value;const fullName=document.getElementById("authName").value.trim();const phone=document.getElementById("authPhone").value.trim();
+  const identifier=document.getElementById("authEmail").value.trim();const email=identifier;const username=document.getElementById("authUsername").value.trim().toLowerCase();const password=document.getElementById("authPassword").value;const confirmPw=document.getElementById("authConfirm").value;const fullName=document.getElementById("authName").value.trim();const phone=document.getElementById("authPhone").value.trim();
   try{
     const client=getAuthClient();let result;
     if(authMode==="signup"){
       if(password.length<8)throw new Error("La password deve contenere almeno 8 caratteri.");
       if(password!==confirmPw)throw new Error("Le password non coincidono.");
       if(!phone)throw new Error("Inserisci il numero di telefono.");
-      result=await client.auth.signUp({email,password,options:{data:{full_name:fullName,phone},emailRedirectTo:location.origin+location.pathname}});
+      if(!/^[a-zA-Z0-9._-]{3,30}$/.test(username))throw new Error("Il nome utente deve avere 3-30 caratteri e contenere solo lettere, numeri, punto, trattino o underscore.");
+      result=await client.auth.signUp({email,password,options:{data:{full_name:fullName,phone,username},emailRedirectTo:location.origin+location.pathname}});
       if(result.error)throw result.error;
       if(result.data?.session){authRecoverySession=false;await finishAuthGate(result.data.session);toast("Registrazione completata.")}
       else{showAuthMode("login");authMessage("Registrazione inviata. Controlla la tua email e conferma l'indirizzo prima di accedere.","success");}
@@ -513,7 +515,11 @@ document.getElementById("authForm").addEventListener("submit",async e=>{
       authRecoverySession=false;authMessage("Password aggiornata. Accesso in corso…","success");
       setTimeout(()=>finishAuthGate(result.data?.user?{user:result.data.user}:null),700);
     }else{
-      result=await client.auth.signInWithPassword({email,password});if(result.error)throw result.error;
+      if(identifier.includes("@")){result=await client.auth.signInWithPassword({email:identifier,password});if(result.error)throw result.error;}else{
+        const cfg=getSupabaseConfig();const response=await fetch(cfg.url.replace(/\/$/,"")+"/functions/v1/username-login",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+cfg.key},body:JSON.stringify({username:identifier,password})});
+        const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||"Accesso con nome utente non riuscito. Verifica che la funzione username-login sia configurata su Supabase.");
+        result=await client.auth.setSession({access_token:payload.access_token,refresh_token:payload.refresh_token});if(result.error)throw result.error;
+      }
       authRecoverySession=false;await finishAuthGate(result.data.session);toast("Accesso effettuato.");
     }
   }catch(err){authMessage(err.message||"Operazione non riuscita. Riprova.","error")}
