@@ -759,6 +759,27 @@ function drawSensorChart(id,rows,keys){
 }
 
 
+// =========================================================
+// AUTENTICAZIONE: inizializzazione client Supabase Auth
+// =========================================================
+let authClient = null;
+let authMode = "login";
+let authRecoverySession = false;
+function getAuthClient(){
+  if(authClient) return authClient;
+  const cfg = getSupabaseConfig();
+  if(!cfg || !cfg.url || !cfg.key) {
+    throw new Error("Configurazione Supabase mancante. Verifica Project URL e chiave pubblicabile.");
+  }
+  if(!window.supabase || typeof window.supabase.createClient !== "function") {
+    throw new Error("Libreria Supabase non caricata. Controlla la connessione Internet e ricarica la pagina.");
+  }
+  authClient = window.supabase.createClient(cfg.url, cfg.key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  return authClient;
+}
+
 function authMessage(text,type="error"){
   const el=document.getElementById("authMessage");if(!el)return;
   el.textContent=text;el.className="auth-message "+type;
