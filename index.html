@@ -38,6 +38,17 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 .auth-card{width:min(100%,440px);background:#111b2e;border:1px solid #2b3b56;border-radius:18px;padding:28px;box-shadow:0 24px 80px #0008}
 .auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.auth-brand .brand-icon{flex-shrink:0}.auth-card h1{font-size:24px;margin:0 0 6px}.auth-subtitle{color:#94a5c2;margin:0 0 22px}.auth-form{display:grid;gap:14px}.auth-form .field[hidden]{display:none!important}.auth-form .field input{width:100%;min-width:0}.auth-message{display:none;border-radius:9px;padding:11px 12px;font-size:12px;white-space:pre-wrap}.auth-message.error{display:block;background:#3b202b;border:1px solid #80404d;color:#ffd1d6}.auth-message.success{display:block;background:#17372f;border:1px solid #2b806b;color:#c6ffed}.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}.auth-link{border:0;background:transparent;color:#8ec4ff;padding:4px 0;font-weight:700}.auth-link:hover{text-decoration:underline}.auth-hint{font-size:11px;color:#94a5c2;margin-top:18px}
 
+
+/* Evidenziazione righe log FDE per categoria evento */
+#fdeTable tr.fde-row-fire{background:rgba(255,75,92,.18);box-shadow:inset 4px 0 #ff4858}
+#fdeTable tr.fde-row-smoke{background:rgba(255,139,61,.16);box-shadow:inset 4px 0 #ff8b3d}
+#fdeTable tr.fde-row-thermal{background:rgba(255,198,64,.15);box-shadow:inset 4px 0 #ffc640}
+#fdeTable tr.fde-row-pressure{background:rgba(78,161,255,.17);box-shadow:inset 4px 0 #4ea1ff}
+#fdeTable tr.fde-row-water{background:rgba(73,212,232,.15);box-shadow:inset 4px 0 #49d4e8}
+#fdeTable tr.fde-row-out{background:rgba(177,120,255,.16);box-shadow:inset 4px 0 #b178ff}
+#fdeTable tr.fde-row-fault{background:rgba(255,114,126,.12);box-shadow:inset 4px 0 #ff727e}
+#fdeTable tbody tr:hover{filter:brightness(1.18)}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -133,7 +144,7 @@ function cercaComponentePage(){
     `<section class="card">
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, assieme, IDRA o descrizione…" autocomplete="off"><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
-      <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><span class="muted tiny" style="align-self:center">Per modificare, seleziona prima una riga nei risultati.</span></div>
+      <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#dc2626;color:#dc2626">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca.</div>
       <div id="componentResults" class="component-results"></div>
       <div id="componentFormHost"></div>
@@ -220,7 +231,39 @@ const COMPONENT_FIELDS=[
 ["Pn_CS2","PN CS2"],["IDRA TI","IDRA TI"],
   ["Descrizione_TI","Descrizione"],["Aggiornato al","Aggiornato al"]
 ];
-function updateEditComponentButton(){const b=document.getElementById("editComponentBtn");if(b)b.disabled=!document.querySelector('input[name="selectedComponent"]:checked')}
+function updateEditComponentButton(){
+  const selected=!!document.querySelector('input[name="selectedComponent"]:checked');
+  const edit=document.getElementById("editComponentBtn"),del=document.getElementById("deleteComponentBtn");
+  if(edit)edit.disabled=!selected;
+  if(del)del.disabled=!selected;
+}
+async function deleteSelectedComponent(){
+  const sel=document.querySelector('input[name="selectedComponent"]:checked');
+  if(!sel){toast("Seleziona prima un componente nei risultati.");return}
+  const record=(window.componentSearchResults||[])[Number(sel.value)];
+  if(!record){toast("Componente selezionato non disponibile.");return}
+  if(record.id===undefined||record.id===null){toast("Impossibile eliminare: il record non contiene l'ID.");return}
+  const label=[record["COMPONENTE"],record["Part_Number"],record["ELEMENTO"]].filter(Boolean).join(" · ")||("ID "+record.id);
+  if(!confirm("ATTENZIONE: stai per eliminare definitivamente questo componente dal catalogo Supabase:\n\n"+label+"\n\nVuoi continuare?"))return;
+  const btn=document.getElementById("deleteComponentBtn"),msg=document.getElementById("componentMessage"),cfg=getSupabaseConfig();
+  if(btn)btn.disabled=true;
+  if(msg)msg.textContent="Eliminazione componente in corso…";
+  try{
+    if(!window.supabase)throw new Error("Libreria Supabase non disponibile.");
+    const client=window.supabase.createClient(cfg.url,cfg.key);
+    const {data,error}=await client.from("magazzino").delete().eq("id",record.id).select("id");
+    if(error)throw error;
+    if(!data||data.length===0)throw new Error("Nessuna riga eliminata. Verifica le policy RLS DELETE e i permessi del tuo utente.");
+    toast("Componente eliminato dal catalogo.");
+    const q=document.getElementById("componentQuery");
+    if(q&&q.value.trim())await searchComponents();
+    else {if(msg)msg.textContent="Componente eliminato. Inserisci un termine e premi Cerca per visualizzare i risultati.";const out=document.getElementById("componentResults");if(out)out.innerHTML="";}
+    const edit=document.getElementById("editComponentBtn"),del=document.getElementById("deleteComponentBtn");if(edit)edit.disabled=true;if(del)del.disabled=true;
+  }catch(err){
+    if(msg)msg.innerHTML=`<b>Eliminazione non riuscita.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Verifica che la tabella magazzino abbia la colonna id e che Supabase consenta DELETE tramite le policy RLS.</span>`;
+    if(btn)btn.disabled=false;
+  }
+}
 function editSelectedComponent(){
   const sel=document.querySelector('input[name="selectedComponent"]:checked');
   if(!sel){toast("Seleziona prima un componente nei risultati.");return}
@@ -292,7 +335,7 @@ function renderFDEResults(rows){const important=rows.filter(r=>r.evento),count=(
 function fdeDateInputValue(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
 function fdeLastThreeDays(refresh=true){const end=document.getElementById("fdeDateEnd"),start=document.getElementById("fdeDateStart");if(!end||!start)return;const today=new Date();today.setHours(0,0,0,0);const from=new Date(today);from.setDate(from.getDate()-2);start.value=fdeDateInputValue(from);end.value=fdeDateInputValue(today);if(refresh)applyFDEFilters()}
 function fdeQuickFilter(event){const el=document.getElementById("fdeEvent");if(el)el.value=event;applyFDEFilters()}
-function applyFDEFilters(){let q=(document.getElementById("fdeSearch")?.value||"").toLowerCase(),o=document.getElementById("fdeOrigin")?.value||"",ev=document.getElementById("fdeEvent")?.value||"",start=document.getElementById("fdeDateStart")?.value||"",end=document.getElementById("fdeDateEnd")?.value||"";let from=start?new Date(start+"T00:00:00"):null,to=end?new Date(end+"T23:59:59.999"):null;let rows=fdeRows.filter(r=>(!from||r.timestamp>=from)&&(!to||r.timestamp<=to)&&(!o||r.origine===o)&&(!ev||(ev==="__nessuno"?!r.evento:r.evento===ev))&&(!q||[r.origine,r.dataset,r.segnale,r.cassa,r.number,r.data_val,r.descrizione,r.evento,r.valore,fdeDate(r.timestamp)].join(" ").toLowerCase().includes(q)));document.getElementById("fdeTableInfo").textContent=`Visualizzate ${rows.length} righe su ${fdeRows.length}.`;const headers=["Time","Origine","Dataset","Segnale","Cassa","Number","Data","Descrizione","Evento","Valore grezzo"];let html=rows.map(r=>`<tr><td>${fdeEscape(fdeDate(r.timestamp))}</td><td>${fdeEscape(r.origine)}</td><td>${fdeEscape(r.dataset)}</td><td>${fdeEscape(r.segnale)}</td><td>${fdeEscape(r.cassa)}</td><td>${fdeEscape(r.number)}</td><td>${fdeEscape(r.data_val)}</td><td style="white-space:normal;min-width:180px">${fdeEscape(r.descrizione)}</td><td>${r.evento?`<span class="status ${/ALLARME|FUMO|TERMICO/.test(r.evento)?'s-critical':/FAULT|FUORI/.test(r.evento)?'s-work':'s-open'}">${fdeEscape(r.evento)}</span>`:'—'}</td><td style="white-space:normal;min-width:220px">${fdeEscape(r.valore)}</td></tr>`).join("");document.getElementById("fdeTable").innerHTML=table(headers,html)}
+function applyFDEFilters(){let q=(document.getElementById("fdeSearch")?.value||"").toLowerCase(),o=document.getElementById("fdeOrigin")?.value||"",ev=document.getElementById("fdeEvent")?.value||"",start=document.getElementById("fdeDateStart")?.value||"",end=document.getElementById("fdeDateEnd")?.value||"";let from=start?new Date(start+"T00:00:00"):null,to=end?new Date(end+"T23:59:59.999"):null;let rows=fdeRows.filter(r=>(!from||r.timestamp>=from)&&(!to||r.timestamp<=to)&&(!o||r.origine===o)&&(!ev||(ev==="__nessuno"?!r.evento:r.evento===ev))&&(!q||[r.origine,r.dataset,r.segnale,r.cassa,r.number,r.data_val,r.descrizione,r.evento,r.valore,fdeDate(r.timestamp)].join(" ").toLowerCase().includes(q)));document.getElementById("fdeTableInfo").textContent=`Visualizzate ${rows.length} righe su ${fdeRows.length}.`;const headers=["Time","Origine","Dataset","Segnale","Cassa","Number","Data","Descrizione","Evento","Valore grezzo"];const fdeRowClass=r=>{const e=String(r.evento||'').toUpperCase();if(e.includes('ALLARME INCENDIO'))return'fde-row-fire';if(e.includes('FUMO'))return'fde-row-smoke';if(e.includes('TERMICO'))return'fde-row-thermal';if(e.includes('BASSA PRESSIONE'))return'fde-row-pressure';if(e.includes('ACQUA PRESSURIZZATA'))return'fde-row-water';if(e.includes('FUORI SERVIZIO'))return'fde-row-out';if(e.includes('FAULT'))return'fde-row-fault';return''};let html=rows.map(r=>`<tr class="${fdeRowClass(r)}"><td>${fdeEscape(fdeDate(r.timestamp))}</td><td>${fdeEscape(r.origine)}</td><td>${fdeEscape(r.dataset)}</td><td>${fdeEscape(r.segnale)}</td><td>${fdeEscape(r.cassa)}</td><td>${fdeEscape(r.number)}</td><td>${fdeEscape(r.data_val)}</td><td style="white-space:normal;min-width:180px">${fdeEscape(r.descrizione)}</td><td>${r.evento?`<span class="status ${/ALLARME|FUMO|TERMICO/.test(r.evento)?'s-critical':/FAULT|FUORI/.test(r.evento)?'s-work':'s-open'}">${fdeEscape(r.evento)}</span>`:'—'}</td><td style="white-space:normal;min-width:220px">${fdeEscape(r.valore)}</td></tr>`).join("");document.getElementById("fdeTable").innerHTML=table(headers,html)}
 function exportFDECSV(){const q=(document.getElementById("fdeSearch")?.value||"").toLowerCase(),o=document.getElementById("fdeOrigin")?.value||"",ev=document.getElementById("fdeEvent")?.value||"",start=document.getElementById("fdeDateStart")?.value||"",end=document.getElementById("fdeDateEnd")?.value||"";const from=start?new Date(start+"T00:00:00"):null,to=end?new Date(end+"T23:59:59.999"):null;let rows=fdeRows.filter(r=>(!from||r.timestamp>=from)&&(!to||r.timestamp<=to)&&(!o||r.origine===o)&&(!ev||(ev==="__nessuno"?!r.evento:r.evento===ev))&&(!q||[r.origine,r.dataset,r.segnale,r.cassa,r.number,r.data_val,r.descrizione,r.evento,r.valore,fdeDate(r.timestamp)].join(" ").toLowerCase().includes(q)));const cols=[["Time",r=>fdeDate(r.timestamp)],["Origine",r=>r.origine],["Dataset",r=>r.dataset],["Segnale",r=>r.segnale],["Cassa",r=>r.cassa],["Number",r=>r.number],["Data",r=>r.data_val],["Descrizione",r=>r.descrizione],["Evento",r=>r.evento],["Valore grezzo",r=>r.valore]];const csv=[cols.map(c=>c[0]),...rows.map(r=>cols.map(c=>c[1](r)))].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Analisi_Log_FDE.csv";a.click();URL.revokeObjectURL(url)}
 function resetFDE(){fdeRows=[];const a=document.getElementById("fdeDM1"),b=document.getElementById("fdeDM8");if(a)a.value="";if(b)b.value="";document.getElementById("fdeMessage").textContent="Seleziona almeno un file per iniziare.";document.getElementById("fdeResults").innerHTML=""}
 
