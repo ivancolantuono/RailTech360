@@ -135,7 +135,7 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
     <div id="authMessage" class="auth-message" role="status" aria-live="polite"></div>
     <form id="authForm" class="auth-form">
       <div class="field" id="authNameField" hidden><label for="authName">Nome e cognome</label><input id="authName" name="name" autocomplete="name" maxlength="100" placeholder="Nome Cognome"></div>
-      <div class="field" id="authPhoneField" hidden><label for="authPhone">Phone</label><input id="authPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="25" placeholder="Es. +39 333 1234567"></div>
+      <div class="field" id="authPhoneField" hidden><label for="authPhone">Telefono</label><input id="authPhone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="25" placeholder="Es. +39 333 1234567"></div>
       <div class="field" id="authEmailField"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="nome@azienda.it"></div>
       <div class="field" id="authPasswordField"><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" placeholder="Almeno 8 caratteri"></div>
       <div class="field" id="authConfirmField" hidden><label for="authConfirm">Conferma password</label><input id="authConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8" placeholder="Ripeti la password"></div>
@@ -382,13 +382,19 @@ async function searchComponents(){
     if(!matches.length){msg.textContent="Nessun componente trovato per “"+q+"”.";return}
     msg.textContent=`Trovati ${matches.length} risultati (limite ${limit}).`;
     window.componentSearchResults=matches;
-    out.innerHTML=table(["Seleziona","Elemento / Assieme","Componente / Descrizione","Part number","Codici ricambio","IDRA TI","Aggiornato al"],matches.map((r,i)=>`<tr>
+    out.innerHTML=table(["Seleziona","ID","ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_CS2","IDRA TI","Descrizione_TI","Aggiornato al"],matches.map((r,i)=>`<tr>
       <td><input type="radio" name="selectedComponent" value="${i}" aria-label="Seleziona componente" onchange="updateEditComponentButton()"></td>
-      <td><div class="main-cell">${escapeHtml(r["ELEMENTO"]||"—")}</div><div class="sub-cell">${escapeHtml(r["ASSIEME"]||"—")}</div></td>
-      <td class="component-detail"><div class="main-cell">${escapeHtml(r["COMPONENTE"]||"—")}</div><div class="sub-cell">${escapeHtml(r["Descrizione_TI"]||"")}</div></td>
+      <td>${escapeHtml(r.id??"—")}</td>
+      <td>${escapeHtml(r["ELEMENTO"]||"—")}</td>
+      <td>${escapeHtml(r["ASSIEME"]||"—")}</td>
+      <td style="white-space:normal;min-width:180px">${escapeHtml(r["COMPONENTE"]||"—")}</td>
       <td><span class="component-pn">${escapeHtml(r["Part_Number"]||"—")}</span></td>
-      <td>${[r["Pn_Ricambio"],r["PnRicambio2"],r["Pn_CS2"]].filter(Boolean).map(escapeHtml).join("<br>")||"—"}</td>
-      <td>${escapeHtml(r["IDRA TI"]||"—")}</td><td>${escapeHtml(r["Aggiornato al"]||"—")}</td></tr>`).join(""));
+      <td>${escapeHtml(r["Pn_Ricambio"]||"—")}</td>
+      <td>${escapeHtml(r["PnRicambio2"]||"—")}</td>
+      <td>${escapeHtml(r["Pn_CS2"]||"—")}</td>
+      <td>${escapeHtml(r["IDRA TI"]||"—")}</td>
+      <td style="white-space:normal;min-width:220px;max-width:360px">${escapeHtml(r["Descrizione_TI"]||"—")}</td>
+      <td>${escapeHtml(r["Aggiornato al"]||"—")}</td></tr>`).join(""));
   }catch(err){
     msg.innerHTML=`<b>Errore durante la ricerca.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Controlla URL, chiave pubblica, nomi delle colonne e policy SELECT (RLS) su magazzino.</span>`;
   }finally{const b=document.getElementById("componentSearchBtn");if(b)b.disabled=false}
@@ -400,6 +406,15 @@ const COMPONENT_FIELDS=[
 ["Pn_CS2","PN CS2"],["IDRA TI","IDRA TI"],
   ["Descrizione_TI","Descrizione"],["Aggiornato al","Aggiornato al"]
 ];
+// Protezione lato interfaccia per modifica/eliminazione. Non sostituisce i permessi RLS di Supabase.
+const COMPONENT_ACTION_PASSWORD = "280188";
+function authorizeComponentAction(action){
+  const entered = window.prompt(`Inserisci la password per ${action} il componente:`);
+  if(entered === null) return false;
+  if(entered !== COMPONENT_ACTION_PASSWORD){ window.alert("Password errata. Operazione annullata."); return false; }
+  return true;
+}
+
 function updateEditComponentButton(){
   const selected=!!document.querySelector('input[name="selectedComponent"]:checked');
   const edit=document.getElementById("editComponentBtn"),del=document.getElementById("deleteComponentBtn");
@@ -407,6 +422,7 @@ function updateEditComponentButton(){
   if(del)del.disabled=!selected;
 }
 async function deleteSelectedComponent(){
+  if(!authorizeComponentAction("eliminare"))return;
   const sel=document.querySelector('input[name="selectedComponent"]:checked');
   if(!sel){toast("Seleziona prima un componente nei risultati.");return}
   const record=(window.componentSearchResults||[])[Number(sel.value)];
@@ -434,6 +450,7 @@ async function deleteSelectedComponent(){
   }
 }
 function editSelectedComponent(){
+  if(!authorizeComponentAction("modificare"))return;
   const sel=document.querySelector('input[name="selectedComponent"]:checked');
   if(!sel){toast("Seleziona prima un componente nei risultati.");return}
   const r=(window.componentSearchResults||[])[Number(sel.value)];if(!r){toast("Componente selezionato non disponibile.");return}
@@ -571,6 +588,8 @@ function renderOpenItemsFiltered(){
     <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
     <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
     <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
+  const oiTableWrap=out.querySelector(".table-wrap");
+  if(oiTableWrap){oiTableWrap.style.maxHeight="420px";oiTableWrap.style.overflow="auto";oiTableWrap.style.borderRadius="10px";oiTableWrap.querySelectorAll("thead th").forEach(th=>{th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#101b2d";});}
 }
 async function loadOpenItems(){
   const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
