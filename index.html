@@ -183,7 +183,7 @@ async function searchComponents(){
   try{
     const client=window.supabase.createClient(cfg.url,cfg.key);
     const limit=Number(document.getElementById("componentLimit").value)||25;
-    const columns=["ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_Consignment_Stoc","Pn_CS2","IDRA TI","Descrizione_TI","Aggiornato al"];
+    const columns=["ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_CS2","IDRA TI","Descrizione_TI","Aggiornato al"];
     const norm=v=>String(v??"").toLocaleLowerCase("it-IT");
     const needle=norm(q);
     let matches=[],start=0,step=1000;
@@ -207,7 +207,7 @@ async function searchComponents(){
       <td><div class="main-cell">${escapeHtml(r["ELEMENTO"]||"—")}</div><div class="sub-cell">${escapeHtml(r["ASSIEME"]||"—")}</div></td>
       <td class="component-detail"><div class="main-cell">${escapeHtml(r["COMPONENTE"]||"—")}</div><div class="sub-cell">${escapeHtml(r["Descrizione_TI"]||"")}</div></td>
       <td><span class="component-pn">${escapeHtml(r["Part_Number"]||"—")}</span></td>
-      <td>${[r["Pn_Ricambio"],r["PnRicambio2"],r["Pn_Consignment_Stoc"],r["Pn_CS2"]].filter(Boolean).map(escapeHtml).join("<br>")||"—"}</td>
+      <td>${[r["Pn_Ricambio"],r["PnRicambio2"],r["Pn_CS2"]].filter(Boolean).map(escapeHtml).join("<br>")||"—"}</td>
       <td>${escapeHtml(r["IDRA TI"]||"—")}</td><td>${escapeHtml(r["Aggiornato al"]||"—")}</td></tr>`).join(""));
   }catch(err){
     msg.innerHTML=`<b>Errore durante la ricerca.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Controlla URL, chiave pubblica, nomi delle colonne e policy SELECT (RLS) su magazzino.</span>`;
@@ -217,7 +217,7 @@ async function searchComponents(){
 const COMPONENT_FIELDS=[
   ["ELEMENTO","Elemento"],["ASSIEME","Assieme"],["COMPONENTE","Componente"],
   ["Part_Number","Part number"],["Pn_Ricambio","PN ricambio"],["PnRicambio2","PN ricambio 2"],
-  ["Pn_Consignment_Stoc","PN consignment stock"],["Pn_CS2","PN CS2"],["IDRA TI","IDRA TI"],
+["Pn_CS2","PN CS2"],["IDRA TI","IDRA TI"],
   ["Descrizione_TI","Descrizione"],["Aggiornato al","Aggiornato al"]
 ];
 function updateEditComponentButton(){const b=document.getElementById("editComponentBtn");if(b)b.disabled=!document.querySelector('input[name="selectedComponent"]:checked')}
