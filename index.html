@@ -127,6 +127,11 @@ td{border-bottom-color:#e6ebf2;color:#26384f}tbody tr:hover{background:#f0f7ff}.
 .fde-timeline-details{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:rgba(8,15,29,.35)}
 .fde-timeline-details summary{cursor:pointer;font-weight:700;color:var(--text);padding:3px 0;user-select:none}
 .fde-timeline-details[open] summary{margin-bottom:10px;color:var(--cyan)}
+/* Tabella FDE: finestra di circa 15 righe con scorrimento verticale */
+.fde-timeline-details .table-wrap{max-height:680px;overflow:auto;overscroll-behavior:contain;border-radius:8px}
+.fde-timeline-details .table-wrap table{border-collapse:separate;border-spacing:0}
+.fde-timeline-details .table-wrap thead th{position:sticky;top:0;z-index:2}
+.fde-timeline-details .table-wrap tbody tr{height:40px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
