@@ -727,14 +727,105 @@ document.addEventListener("change",async e=>{if(e.target?.id!=="lcmFile"||!e.tar
 function scadenzePage(){
   const treni0158="https://app.box.com/s/tqbqc0h53jh22gh7jj993nbto3l89mm8";
   const treni101plus="https://app.box.com/s/f8e8mfxu5erqf1go6mbljkljsitj553g";
-  return head("Scadenze","Consulta le cartelle manutentive archiviate su Box",`<a class="btn" href="https://app.box.com/" target="_blank" rel="noopener noreferrer">↗ Apri Box</a>`)+
-  `<div class="grid columns" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
+  return head("Scadenze","Consulta gli archivi manutentivi su Dropbox e Box",`<a class="btn" href="https://www.dropbox.com/home" target="_blank" rel="noopener noreferrer">↗ Apri Dropbox</a><a class="btn" href="https://app.box.com/" target="_blank" rel="noopener noreferrer">↗ Apri Box</a>`)+
+  `<section class="card" style="margin-bottom:16px">
+    <div class="card-head"><div><h2>Archivio Dropbox</h2><p class="muted tiny" style="margin:5px 0 0">Naviga cartelle e sottocartelle e apri i PDF direttamente dal browser.</p></div><span class="status s-done">COLLEGATO</span></div>
+    <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
+    <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
+    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Percorso</th><th>Azione</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="4" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="dropboxLoadBtn" type="button">📂 Carica cartella Dropbox</button></div>
+  </section>
+  <div class="grid columns" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
     <section class="card"><div class="card-head"><h2>Treni 01–58</h2><span class="status s-done">BOX</span></div><p class="muted">Apri l’archivio dei treni da 01 a 58 e naviga le sottocartelle fino al PDF desiderato.</p><a class="btn primary" href="${treni0158}" target="_blank" rel="noopener noreferrer">↗ Apri cartella Box</a></section>
     <section class="card"><div class="card-head"><h2>Treni 101 in poi</h2><span class="status s-done">BOX</span></div><p class="muted">Apri l’archivio dei treni dal 101 in poi e naviga le sottocartelle fino al PDF desiderato.</p><a class="btn primary" href="${treni101plus}" target="_blank" rel="noopener noreferrer">↗ Apri cartella Box</a></section>
   </div>
-  <section class="card"><div class="card-head"><h2>Come consultare i documenti</h2></div><p class="muted">Se richiesto, accedi a Box con il tuo account aziendale. Da ciascuna cartella puoi aprire le sottocartelle e visualizzare o aprire i PDF direttamente su Box. I documenti restano su Box e non vengono copiati su Supabase.</p><div class="notice">L’elenco ricorsivo delle sottocartelle direttamente dentro questa pagina richiede l’integrazione autorizzata con le API Box tramite backend. I collegamenti qui sopra aprono le cartelle Box originali.</div></section>`;
+  <section class="card"><div class="card-head"><h2>Come consultare i documenti</h2></div><p class="muted">I documenti Dropbox vengono letti tramite la Edge Function Supabase <b>smooth-action</b>. I file rimangono su Dropbox e non vengono copiati nel database.</p></section>`;
 }
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,scadenze:scadenzePage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+
+let dropboxCurrentPath = null;
+let dropboxPathHistory = [];
+const DROPBOX_START_PATH = "/railtech360_test";
+
+function dropboxMessage(text, type="info"){
+  const el=document.getElementById("dropboxMessage");
+  if(!el)return;
+  el.className=type==="error"?"notice":"muted tiny";
+  el.style.padding="12px 14px";
+  el.textContent=text;
+}
+
+async function dropboxRequest(body){
+  const cfg=getSupabaseConfig();
+  if(!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase mancante.");
+  if(!window.supabase)throw new Error("Libreria Supabase non caricata.");
+  const client=window.supabase.createClient(cfg.url,cfg.key);
+  const {data,error}=await client.functions.invoke("smooth-action",{body});
+  if(error)throw new Error(error.message||"Errore durante la chiamata a smooth-action.");
+  if(!data)throw new Error("La funzione non ha restituito dati.");
+  if(data.success===false)throw new Error(data.error||data.message||"Dropbox ha restituito un errore.");
+  return data;
+}
+
+async function loadDropboxFolder(path=null, pushHistory=false){
+  const tbody=document.getElementById("dropboxFiles");
+  const back=document.getElementById("dropboxBackBtn");
+  const label=document.getElementById("dropboxPathLabel");
+  if(!tbody)return;
+  tbody.innerHTML='<tr><td colspan="4" class="empty">Caricamento contenuti Dropbox…</td></tr>';
+  dropboxMessage("Connessione a Dropbox in corso…");
+  try{
+    const requestedPath=path||dropboxCurrentPath||DROPBOX_START_PATH;
+    const data=await dropboxRequest({action:"list",path:requestedPath});
+    if(pushHistory && dropboxCurrentPath)dropboxPathHistory.push(dropboxCurrentPath);
+    dropboxCurrentPath=data.folder_path||requestedPath;
+    label.textContent=dropboxCurrentPath;
+    back.disabled=dropboxPathHistory.length===0;
+    const files=Array.isArray(data.files)?data.files:[];
+    if(!files.length){tbody.innerHTML='<tr><td colspan="4" class="empty">Questa cartella è vuota.</td></tr>';dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
+    const folders=files.filter(x=>x.type==="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    const docs=files.filter(x=>x.type!=="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    tbody.innerHTML=[...folders,...docs].map((file)=>{
+      const name=escapeHtml(file.name||"Senza nome");
+      const filePath=String(file.path||"");
+      const pathHtml=escapeHtml(filePath||"—");
+      if(file.type==="folder")return `<tr><td>📁 Cartella</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><button class="btn small-action" type="button" data-dropbox-open-folder="${escapeHtml(filePath)}">Apri cartella →</button></td></tr>`;
+      const isPdf=/\.pdf$/i.test(String(file.name||""));
+      return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><button class="btn small-action" type="button" data-dropbox-open-file="${escapeHtml(filePath)}" data-dropbox-file-name="${name}">Apri file ↗</button></td></tr>`;
+    }).join("");
+    dropboxMessage(`Cartella caricata correttamente · ${files.length} elementi.`);
+  }catch(err){
+    tbody.innerHTML='<tr><td colspan="4" class="empty">Impossibile caricare la cartella.</td></tr>';
+    dropboxMessage("Errore Dropbox: "+(err.message||String(err)),"error");
+  }
+}
+
+function initDropboxBrowser(){
+  document.getElementById("dropboxLoadBtn")?.addEventListener("click",()=>loadDropboxFolder(DROPBOX_START_PATH));
+  document.getElementById("dropboxRefreshBtn")?.addEventListener("click",()=>loadDropboxFolder(dropboxCurrentPath||DROPBOX_START_PATH));
+  document.getElementById("dropboxBackBtn")?.addEventListener("click",()=>{
+    const previous=dropboxPathHistory.pop();
+    if(previous)loadDropboxFolder(previous);
+  });
+  document.getElementById("dropboxFiles")?.addEventListener("click",async e=>{
+    const folderBtn=e.target.closest("[data-dropbox-open-folder]");
+    const fileBtn=e.target.closest("[data-dropbox-open-file]");
+    if(folderBtn){loadDropboxFolder(folderBtn.dataset.dropboxOpenFolder,true);return;}
+    if(fileBtn){
+      const path=fileBtn.dataset.dropboxOpenFile;
+      const name=fileBtn.dataset.dropboxFileName||"documento";
+      try{
+        dropboxMessage("Recupero del collegamento per "+name+"…");
+        const result=await dropboxRequest({action:"open",path});
+        const url=result.temporary_link||result.link||result.url;
+        if(!url)throw new Error("La funzione non ha restituito il collegamento al file. Aggiorna smooth-action con il codice previsto per l'azione open.");
+        window.open(url,"_blank","noopener,noreferrer");
+        dropboxMessage("Documento aperto in una nuova scheda.");
+      }catch(err){dropboxMessage("Errore apertura file: "+(err.message||String(err)),"error");}
+    }
+  });
+}
+
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,scadenze:scadenzePage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="scadenze")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
