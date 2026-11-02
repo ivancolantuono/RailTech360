@@ -265,6 +265,18 @@ input,select,textarea{max-width:100%;}
   .btn,button{touch-action:manipulation;}
 }
 @media(min-width:701px){.mobile-bottom-nav,.mobile-tools-backdrop,.mobile-tools-sheet{display:none!important}}
+
+/* Correzione contrasto pannello strumenti su smartphone */
+@media(max-width:700px){
+  .mobile-tools-sheet{color:#f4f7ff!important;background:#101b2e!important;}
+  .mobile-tools-title{color:#f4f7ff!important;}
+  .mobile-tools-grid button{color:#f4f7ff!important;background:#172640!important;border-color:#60718c!important;}
+  .mobile-tools-grid button span:not(.ico){color:#f4f7ff!important;opacity:1!important;}
+  .mobile-tools-grid button .ico{color:#42c9ff!important;background:#203b60!important;}
+  .mobile-tools-grid button.active{background:#173b63!important;border-color:#168cff!important;box-shadow:inset 0 0 0 1px #168cff!important;}
+  .mobile-tools-grid button:focus-visible{outline:3px solid #42c9ff!important;outline-offset:2px;}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
