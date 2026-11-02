@@ -732,7 +732,7 @@ function scadenzePage(){
     <div class="card-head"><div><h2>Archivio Dropbox</h2><p class="muted tiny" style="margin:5px 0 0">Naviga cartelle e sottocartelle e apri i PDF direttamente dal browser.</p></div><span class="status s-done">COLLEGATO</span></div>
     <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
     <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
-    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Percorso</th><th>Azione</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="4" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
+    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Percorso</th><th>Azione / tecnico WhatsApp</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="4" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="dropboxLoadBtn" type="button">📂 Carica cartella Dropbox</button></div>
   </section>
   <div class="grid columns" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
@@ -744,7 +744,8 @@ function scadenzePage(){
 
 let dropboxCurrentPath = null;
 let dropboxPathHistory = [];
-const DROPBOX_START_PATH = "/railtech360_test";
+let dropboxOperators = [];
+const DROPBOX_START_PATH = null; // Usa la radice del link condiviso configurato in smooth-action.
 
 function dropboxMessage(text, type="info"){
   const el=document.getElementById("dropboxMessage");
@@ -766,6 +767,33 @@ async function dropboxRequest(body){
   return data;
 }
 
+async function loadDropboxOperators(){
+  const cfg=getSupabaseConfig();
+  if(!window.supabase||!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase non disponibile.");
+  const client=window.supabase.createClient(cfg.url,cfg.key);
+  const {data,error}=await client.from("operatori").select('id,Nominativo,Telefono,Attivo').eq('Attivo',true).order('Nominativo');
+  if(error)throw new Error("Lettura tecnici non riuscita: "+error.message+". Verifica la policy SELECT RLS della tabella operatori.");
+  dropboxOperators=(data||[]).filter(o=>String(o.Telefono||"").trim());
+  return dropboxOperators;
+}
+function dropboxPhone(raw){
+  let n=String(raw||"").trim().replace(/[^\d+]/g,"");
+  if(n.startsWith("00"))n="+"+n.slice(2);
+  if(n.startsWith("+"))return n.slice(1).replace(/\D/g,"");
+  n=n.replace(/\D/g,"");
+  if(n.startsWith("39"))return n;
+  return "39"+n;
+}
+function dropboxWhatsAppUrl(phone,name,path){
+  const msg=`Ciao, ti inoltro il documento manutentivo: ${name}\nPercorso: ${path}\nCollegamento Dropbox: ${DROPBOX_FOLDER_LINK_FOR_MESSAGE}`;
+  return `https://wa.me/${dropboxPhone(phone)}?text=${encodeURIComponent(msg)}`;
+}
+const DROPBOX_FOLDER_LINK_FOR_MESSAGE="https://www.dropbox.com/scl/fo/1jguql0h3qn6uake6x056/ALxId1cd1dCfuGBUn5iRiBw?rlkey=rm36jfcydo0rhq60ma98zgi7y&st=eif4ogr9&dl=0";
+function renderDropboxOperatorSelect(filePath,name){
+  if(!dropboxOperators.length)return '<span class="muted tiny">Nessun tecnico disponibile</span>';
+  const options=dropboxOperators.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.Nominativo||"Tecnico")}</option>`).join("");
+  return `<div style="display:grid;gap:6px;min-width:170px"><select aria-label="Seleziona tecnico WhatsApp" data-dropbox-tech="${escapeHtml(filePath)}" style="max-width:190px">${options}</select><button class="btn small-action" type="button" data-dropbox-whatsapp="${escapeHtml(filePath)}" data-dropbox-file-name="${escapeHtml(name)}">WhatsApp ↗</button></div>`;
+}
 async function loadDropboxFolder(path=null, pushHistory=false){
   const tbody=document.getElementById("dropboxFiles");
   const back=document.getElementById("dropboxBackBtn");
@@ -775,22 +803,24 @@ async function loadDropboxFolder(path=null, pushHistory=false){
   dropboxMessage("Connessione a Dropbox in corso…");
   try{
     const requestedPath=path||dropboxCurrentPath||DROPBOX_START_PATH;
-    const data=await dropboxRequest({action:"list",path:requestedPath});
+    const requestBody={action:"list"};
+    if(requestedPath)requestBody.path=requestedPath;
+    const data=await dropboxRequest(requestBody);
     if(pushHistory && dropboxCurrentPath)dropboxPathHistory.push(dropboxCurrentPath);
     dropboxCurrentPath=data.folder_path||requestedPath;
-    label.textContent=dropboxCurrentPath;
+    label.textContent=(dropboxCurrentPath===DROPBOX_START_PATH||!dropboxPathHistory.length) ? (data.folder||"Manuali e fiche (Treni 01 a 58)") : dropboxCurrentPath;
     back.disabled=dropboxPathHistory.length===0;
     const files=Array.isArray(data.files)?data.files:[];
     if(!files.length){tbody.innerHTML='<tr><td colspan="4" class="empty">Questa cartella è vuota.</td></tr>';dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
     const folders=files.filter(x=>x.type==="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const docs=files.filter(x=>x.type!=="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-    tbody.innerHTML=[...folders,...docs].map((file)=>{
-      const name=escapeHtml(file.name||"Senza nome");
-      const filePath=String(file.path||"");
-      const pathHtml=escapeHtml(filePath||"—");
+    tbody.innerHTML=[...folders,...docs].map(file=>{
+      const rawName=String(file.name||"Senza nome"), name=escapeHtml(rawName), filePath=String(file.path||""), pathHtml=escapeHtml(filePath||"—");
       if(file.type==="folder")return `<tr><td>📁 Cartella</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><button class="btn small-action" type="button" data-dropbox-open-folder="${escapeHtml(filePath)}">Apri cartella →</button></td></tr>`;
-      const isPdf=/\.pdf$/i.test(String(file.name||""));
-      return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><button class="btn small-action" type="button" data-dropbox-open-file="${escapeHtml(filePath)}" data-dropbox-file-name="${name}">Apri file ↗</button></td></tr>`;
+      const isPdf=/\.pdf$/i.test(rawName);
+      const openBtn=`<button class="btn small-action" type="button" data-dropbox-open-file="${escapeHtml(filePath)}" data-dropbox-file-name="${name}">Apri file ↗</button>`;
+      const wa=isPdf?renderDropboxOperatorSelect(filePath,rawName):'';
+      return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><div style="display:grid;gap:7px;justify-items:start">${openBtn}${wa}</div></td></tr>`;
     }).join("");
     dropboxMessage(`Cartella caricata correttamente · ${files.length} elementi.`);
   }catch(err){
@@ -798,29 +828,35 @@ async function loadDropboxFolder(path=null, pushHistory=false){
     dropboxMessage("Errore Dropbox: "+(err.message||String(err)),"error");
   }
 }
-
 function initDropboxBrowser(){
-  document.getElementById("dropboxLoadBtn")?.addEventListener("click",()=>loadDropboxFolder(DROPBOX_START_PATH));
+  loadDropboxOperators().then(()=>{if(dropboxCurrentPath)loadDropboxFolder(dropboxCurrentPath)}).catch(err=>dropboxMessage(err.message||String(err),"error"));
+  document.getElementById("dropboxLoadBtn")?.addEventListener("click",()=>{dropboxCurrentPath=null;dropboxPathHistory=[];loadDropboxFolder(null);});
   document.getElementById("dropboxRefreshBtn")?.addEventListener("click",()=>loadDropboxFolder(dropboxCurrentPath||DROPBOX_START_PATH));
-  document.getElementById("dropboxBackBtn")?.addEventListener("click",()=>{
-    const previous=dropboxPathHistory.pop();
-    if(previous)loadDropboxFolder(previous);
-  });
+  document.getElementById("dropboxBackBtn")?.addEventListener("click",()=>{const previous=dropboxPathHistory.pop();if(previous)loadDropboxFolder(previous);});
   document.getElementById("dropboxFiles")?.addEventListener("click",async e=>{
-    const folderBtn=e.target.closest("[data-dropbox-open-folder]");
-    const fileBtn=e.target.closest("[data-dropbox-open-file]");
+    const folderBtn=e.target.closest("[data-dropbox-open-folder]"),fileBtn=e.target.closest("[data-dropbox-open-file]"),waBtn=e.target.closest("[data-dropbox-whatsapp]");
     if(folderBtn){loadDropboxFolder(folderBtn.dataset.dropboxOpenFolder,true);return;}
-    if(fileBtn){
-      const path=fileBtn.dataset.dropboxOpenFile;
-      const name=fileBtn.dataset.dropboxFileName||"documento";
+    if(waBtn){
+      const path=waBtn.dataset.dropboxWhatsapp, name=waBtn.dataset.dropboxFileName||"documento PDF";
+      const select=document.querySelector(`[data-dropbox-tech="${CSS.escape(path)}"]`);
+      const operator=dropboxOperators.find(o=>String(o.id)===String(select?.value));
+      if(!operator){dropboxMessage("Seleziona un tecnico attivo con numero di telefono.","error");return;}
+      if(!dropboxPhone(operator.Telefono)){dropboxMessage("Il tecnico selezionato non ha un numero valido.","error");return;}
       try{
-        dropboxMessage("Recupero del collegamento per "+name+"…");
-        const result=await dropboxRequest({action:"open",path});
-        const url=result.temporary_link||result.link||result.url;
-        if(!url)throw new Error("La funzione non ha restituito il collegamento al file. Aggiorna smooth-action con il codice previsto per l'azione open.");
-        window.open(url,"_blank","noopener,noreferrer");
-        dropboxMessage("Documento aperto in una nuova scheda.");
-      }catch(err){dropboxMessage("Errore apertura file: "+(err.message||String(err)),"error");}
+        dropboxMessage("Recupero del collegamento al PDF per WhatsApp…");
+        const linkData=await dropboxRequest({action:"open",path});
+        const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
+        if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
+        const message=`Ciao ${operator.Nominativo||""}, ti inoltro il documento manutentivo: ${name}\n${pdfUrl}`;
+        window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
+        dropboxMessage("WhatsApp aperto con il messaggio e il collegamento al PDF. Il collegamento temporaneo potrebbe scadere.");
+      }catch(err){dropboxMessage("Impossibile preparare il messaggio WhatsApp: "+(err.message||String(err)),"error");}
+      return;
+    }
+    if(fileBtn){
+      const path=fileBtn.dataset.dropboxOpenFile,name=fileBtn.dataset.dropboxFileName||"documento";
+      try{dropboxMessage("Recupero del collegamento per "+name+"…");const result=await dropboxRequest({action:"open",path});const url=result.temporary_link||result.link||result.url;if(!url)throw new Error("La funzione non ha restituito il collegamento al file.");window.open(url,"_blank","noopener,noreferrer");dropboxMessage("Collegamento al documento aperto in una nuova scheda.");}
+      catch(err){dropboxMessage("Errore apertura file: "+(err.message||String(err)),"error");}
     }
   });
 }
