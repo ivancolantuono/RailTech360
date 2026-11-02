@@ -727,19 +727,15 @@ document.addEventListener("change",async e=>{if(e.target?.id!=="lcmFile"||!e.tar
 function scadenzePage(){
   const treni0158="https://app.box.com/s/tqbqc0h53jh22gh7jj993nbto3l89mm8";
   const treni101plus="https://app.box.com/s/f8e8mfxu5erqf1go6mbljkljsitj553g";
-  return head("Scadenze","Consulta gli archivi manutentivi su Dropbox e Box",`<a class="btn" href="https://www.dropbox.com/home" target="_blank" rel="noopener noreferrer">↗ Apri Dropbox</a><a class="btn" href="https://app.box.com/" target="_blank" rel="noopener noreferrer">↗ Apri Box</a>`)+
+  return head("Scadenze","Consulta l’archivio manutentivo su Dropbox")+
   `<section class="card" style="margin-bottom:16px">
     <div class="card-head"><div><h2>Archivio Dropbox</h2><p class="muted tiny" style="margin:5px 0 0">Naviga cartelle e sottocartelle e apri i PDF direttamente dal browser.</p></div><span class="status s-done">COLLEGATO</span></div>
     <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
     <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
-    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Percorso</th><th>Azione / tecnico WhatsApp</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="4" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
+    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Azione / tecnico WhatsApp</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="3" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="dropboxLoadBtn" type="button">📂 Carica cartella Dropbox</button></div>
   </section>
-  <div class="grid columns" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px">
-    <section class="card"><div class="card-head"><h2>Treni 01–58</h2><span class="status s-done">BOX</span></div><p class="muted">Apri l’archivio dei treni da 01 a 58 e naviga le sottocartelle fino al PDF desiderato.</p><a class="btn primary" href="${treni0158}" target="_blank" rel="noopener noreferrer">↗ Apri cartella Box</a></section>
-    <section class="card"><div class="card-head"><h2>Treni 101 in poi</h2><span class="status s-done">BOX</span></div><p class="muted">Apri l’archivio dei treni dal 101 in poi e naviga le sottocartelle fino al PDF desiderato.</p><a class="btn primary" href="${treni101plus}" target="_blank" rel="noopener noreferrer">↗ Apri cartella Box</a></section>
-  </div>
-  <section class="card"><div class="card-head"><h2>Come consultare i documenti</h2></div><p class="muted">I documenti Dropbox vengono letti tramite la Edge Function Supabase <b>smooth-action</b>. I file rimangono su Dropbox e non vengono copiati nel database.</p></section>`;
+`;
 }
 
 let dropboxCurrentPath = null;
@@ -788,7 +784,7 @@ function dropboxWhatsAppUrl(phone,name,path){
   const msg=`Ciao, ti inoltro il documento manutentivo: ${name}\nPercorso: ${path}\nCollegamento Dropbox: ${DROPBOX_FOLDER_LINK_FOR_MESSAGE}`;
   return `https://wa.me/${dropboxPhone(phone)}?text=${encodeURIComponent(msg)}`;
 }
-const DROPBOX_FOLDER_LINK_FOR_MESSAGE="https://www.dropbox.com/scl/fo/1jguql0h3qn6uake6x056/ALxId1cd1dCfuGBUn5iRiBw?rlkey=rm36jfcydo0rhq60ma98zgi7y&st=eif4ogr9&dl=0";
+const DROPBOX_FOLDER_LINK_FOR_MESSAGE="https://www.dropbox.com/scl/fo/scoxt6qs8xrzcqzzkrgao/ABTn_-UMsH-Q3lVW_C2NQOQ?rlkey=db28o5pe9lpzxz3nn03duewx1&st=vmuoqytc&dl=0";
 function renderDropboxOperatorSelect(filePath,name){
   if(!dropboxOperators.length)return '<span class="muted tiny">Nessun tecnico disponibile</span>';
   const options=dropboxOperators.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.Nominativo||"Tecnico")}</option>`).join("");
@@ -799,7 +795,7 @@ async function loadDropboxFolder(path=null, pushHistory=false){
   const back=document.getElementById("dropboxBackBtn");
   const label=document.getElementById("dropboxPathLabel");
   if(!tbody)return;
-  tbody.innerHTML='<tr><td colspan="4" class="empty">Caricamento contenuti Dropbox…</td></tr>';
+  tbody.innerHTML='<tr><td colspan="3" class="empty">Caricamento contenuti Dropbox…</td></tr>';
   dropboxMessage("Connessione a Dropbox in corso…");
   try{
     const requestedPath=path||dropboxCurrentPath||DROPBOX_START_PATH;
@@ -811,20 +807,20 @@ async function loadDropboxFolder(path=null, pushHistory=false){
     label.textContent=(dropboxCurrentPath===DROPBOX_START_PATH||!dropboxPathHistory.length) ? (data.folder||"Manuali e fiche (Treni 01 a 58)") : dropboxCurrentPath;
     back.disabled=dropboxPathHistory.length===0;
     const files=Array.isArray(data.files)?data.files:[];
-    if(!files.length){tbody.innerHTML='<tr><td colspan="4" class="empty">Questa cartella è vuota.</td></tr>';dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
+    if(!files.length){tbody.innerHTML='<tr><td colspan="3" class="empty">Questa cartella è vuota.</td></tr>';dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
     const folders=files.filter(x=>x.type==="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const docs=files.filter(x=>x.type!=="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     tbody.innerHTML=[...folders,...docs].map(file=>{
       const rawName=String(file.name||"Senza nome"), name=escapeHtml(rawName), filePath=String(file.path||""), pathHtml=escapeHtml(filePath||"—");
-      if(file.type==="folder")return `<tr><td>📁 Cartella</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><button class="btn small-action" type="button" data-dropbox-open-folder="${escapeHtml(filePath)}">Apri cartella →</button></td></tr>`;
+      if(file.type==="folder")return `<tr><td>📁 Cartella</td><td><b>${name}</b></td><td><button class="btn small-action" type="button" data-dropbox-open-folder="${escapeHtml(filePath)}">Apri cartella →</button></td></tr>`;
       const isPdf=/\.pdf$/i.test(rawName);
       const openBtn=`<button class="btn small-action" type="button" data-dropbox-open-file="${escapeHtml(filePath)}" data-dropbox-file-name="${name}">Apri file ↗</button>`;
       const wa=isPdf?renderDropboxOperatorSelect(filePath,rawName):'';
-      return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td style="white-space:normal;overflow-wrap:anywhere">${pathHtml}</td><td><div style="display:grid;gap:7px;justify-items:start">${openBtn}${wa}</div></td></tr>`;
+      return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td><div style="display:grid;gap:7px;justify-items:start">${openBtn}${wa}</div></td></tr>`;
     }).join("");
     dropboxMessage(`Cartella caricata correttamente · ${files.length} elementi.`);
   }catch(err){
-    tbody.innerHTML='<tr><td colspan="4" class="empty">Impossibile caricare la cartella.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="3" class="empty">Impossibile caricare la cartella.</td></tr>';
     dropboxMessage("Errore Dropbox: "+(err.message||String(err)),"error");
   }
 }
