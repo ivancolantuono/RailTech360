@@ -965,8 +965,8 @@ function renderOpenItemsFiltered(){
   const list=openItemsCache.filter(x=>(!treno||norm(x.treno).includes(treno))&&(!cassa||norm(x.cassa).includes(cassa))&&(!impianto||norm(x.impianto).includes(impianto)));
   msg.textContent=`Visualizzati ${list.length} Open Item su ${openItemsCache.length}.`;
   if(!list.length){out.innerHTML='<div class="empty">Nessun Open Item corrisponde ai filtri selezionati.</div>';return;}
-  out.innerHTML=table(["ID / Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
-    <td><div class="main-cell">#${escapeHtml(x.id)}</div><div class="sub-cell">${escapeHtml(x.treno||"—")}</div></td>
+  out.innerHTML=table(["Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
+    <td><div class="main-cell">${escapeHtml(x.treno||"—")}</div></td>
     <td style="white-space:normal;min-width:200px;max-width:360px">${escapeHtml(x.descrizione||"—")}</td>
     <td><div>${escapeHtml(x.cassa||"—")}</div><div class="sub-cell">${escapeHtml(x.impianto||"—")}</div></td>
     <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
