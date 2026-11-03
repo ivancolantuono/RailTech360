@@ -483,7 +483,7 @@ function cercaComponentePage(){
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, IDRA o descrizione…" autocomplete="off"><select id="componentAssiemeFilter" aria-label="Filtra per assieme" style="min-width:220px"><option value="">Tutti gli assiemi</option></select><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
       <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
-      <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca.</div>
+      <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca. Il filtro ASSIEME mostrerà solo gli assiemi presenti nei risultati della ricerca.</div>
       <div id="componentResults" class="component-results"></div>
       <div id="componentFormHost"></div>
     </section>`;
@@ -545,8 +545,13 @@ async function searchComponents(){
       if(error)throw error;
       if(!batch||batch.length===0)break;
       for(const r of batch){
-        const ass=String(r["ASSIEME"]??"").trim();if(ass)assiemi.add(ass);
+        const ass=String(r["ASSIEME"]??"").trim();
         const textMatch=!needle||columns.some(c=>norm(r[c]).includes(needle));
+
+        // Il menu ASSIEME mostra solo gli assiemi che hanno almeno
+        // un componente corrispondente alla ricerca testuale corrente.
+        if(textMatch&&ass)assiemi.add(ass);
+
         const assiemeMatch=!assiemeNeedle||norm(r["ASSIEME"])===assiemeNeedle;
         if(textMatch&&assiemeMatch&&matches.length<limit)matches.push(r);
       }
