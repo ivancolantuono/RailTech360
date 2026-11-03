@@ -1323,6 +1323,7 @@ document.addEventListener("change",function(e){
 </script>
 
 
+<script>
 // Assegna a ogni cella l'etichetta della relativa intestazione: usata nella vista mobile.
 function labelResponsiveTables(root=document){
   root.querySelectorAll('.table-wrap table').forEach(table=>{
@@ -1353,6 +1354,7 @@ const responsiveTableObserver=new MutationObserver(records=>{
   }
 });
 responsiveTableObserver.observe(document.body,{childList:true,subtree:true});
+</script>
 
 </body>
 </html>
