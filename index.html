@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f3f6fb">
 <link rel="apple-touch-icon" sizes="180x180" href="railway-maintenance-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="railway-maintenance-icon.png">
@@ -300,6 +300,117 @@ input,select,textarea{max-width:100%;}
 #componentResults tbody td{background:transparent!important;color:#26384f!important;border-bottom:1px solid #e6ebf2!important;}
 #componentResults .component-pn{color:#145fa8!important;}
 #componentResults input[type="radio"]{accent-color:#1677d2!important;}
+
+
+/* Responsive mobile: le tabelle diventano schede leggibili, desktop invariato */
+@media (max-width: 700px){
+  .content .table-wrap,
+  #openItemResults .table-wrap,
+  #componentResults .table-wrap,
+  #dropboxFilesWrap{
+    width:100%!important;max-width:100%!important;max-height:none!important;
+    height:auto!important;overflow:visible!important;border:0!important;
+    border-radius:0!important;background:transparent!important;
+  }
+  .content .table-wrap table,
+  #openItemResults .table-wrap table,
+  #componentResults .table-wrap table,
+  #dropboxFilesWrap table{
+    display:block!important;width:100%!important;min-width:0!important;
+    table-layout:auto!important;border:0!important;border-collapse:separate!important;
+    border-spacing:0!important;white-space:normal!important;
+  }
+  .content .table-wrap thead,
+  #openItemResults .table-wrap thead,
+  #componentResults .table-wrap thead,
+  #dropboxFilesWrap thead{display:none!important}
+  .content .table-wrap tbody,
+  #openItemResults .table-wrap tbody,
+  #componentResults .table-wrap tbody,
+  #dropboxFilesWrap tbody{display:grid!important;grid-template-columns:minmax(0,1fr);gap:12px}
+  .content .table-wrap tbody tr,
+  #openItemResults .table-wrap tbody tr,
+  #componentResults .table-wrap tbody tr,
+  #dropboxFilesWrap tbody tr{
+    display:block!important;width:100%!important;min-width:0!important;
+    background:#fff!important;color:#24364d!important;border:1px solid #d9e3ef!important;
+    border-radius:12px!important;overflow:hidden!important;box-shadow:0 2px 8px rgba(20,40,70,.06);
+  }
+  .content .table-wrap tbody td,
+  #openItemResults .table-wrap tbody td,
+  #componentResults .table-wrap tbody td,
+  #dropboxFilesWrap tbody td{
+    display:grid!important;grid-template-columns:minmax(105px,34%) minmax(0,1fr)!important;
+    gap:10px!important;align-items:start!important;width:auto!important;min-width:0!important;
+    max-width:none!important;padding:10px 12px!important;margin:0!important;
+    border:0!important;border-bottom:1px solid #edf1f6!important;
+    color:#24364d!important;background:transparent!important;text-align:left!important;
+    white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;
+    font-size:13px!important;line-height:1.4!important;
+  }
+  .content .table-wrap tbody td:last-child,
+  #openItemResults .table-wrap tbody td:last-child,
+  #componentResults .table-wrap tbody td:last-child,
+  #dropboxFilesWrap tbody td:last-child{border-bottom:0!important}
+  .content .table-wrap tbody td[data-label]::before,
+  #openItemResults .table-wrap tbody td[data-label]::before,
+  #componentResults .table-wrap tbody td[data-label]::before,
+  #dropboxFilesWrap tbody td[data-label]::before{
+    content:attr(data-label);display:block;color:#64748b;font-size:10px;
+    line-height:1.3;font-weight:800;text-transform:uppercase;letter-spacing:.35px;
+    overflow-wrap:anywhere;
+  }
+  .content .table-wrap tbody td[colspan],
+  #openItemResults .table-wrap tbody td[colspan],
+  #componentResults .table-wrap tbody td[colspan],
+  #dropboxFilesWrap tbody td[colspan]{display:block!important;text-align:center!important}
+  .content .table-wrap tbody td[colspan]::before,
+  #openItemResults .table-wrap tbody td[colspan]::before,
+  #componentResults .table-wrap tbody td[colspan]::before,
+  #dropboxFilesWrap tbody td[colspan]::before{content:none!important}
+  #openItemResults .table-wrap td .actions{display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;gap:8px!important}
+  #openItemResults .table-wrap td .actions .btn{flex:1 1 110px!important;font-size:12px!important;padding:9px 10px!important}
+  #componentResults .table-wrap td .component-detail{min-width:0!important;max-width:none!important}
+  #componentResults .table-wrap td .component-pn{overflow-wrap:anywhere!important}
+  #dropboxFilesWrap tbody td{grid-template-columns:minmax(100px,30%) minmax(0,1fr)!important}
+  #dropboxFilesWrap select{max-width:100%!important;width:100%!important}
+  .content .table-wrap tbody tr:hover{background:#fff!important}
+}
+
+
+/* Auto-resize fluido: layout proporzionato alla finestra, senza zoom forzato */
+:root{
+  --page-gutter:clamp(12px,2.2vw,34px);
+  --card-space:clamp(12px,1.5vw,22px);
+  --table-font:clamp(10px,.78vw,12px);
+}
+html{width:100%;min-width:320px;overflow-x:hidden;-webkit-text-size-adjust:100%}
+body{width:100%;min-width:320px;overflow-x:hidden}
+.app{width:100%;min-height:100dvh;min-width:0}
+main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
+.content{padding:clamp(14px,2vw,30px) var(--page-gutter)}
+.card{padding:var(--card-space)}
+.toolbar{min-width:0;flex-wrap:wrap}
+.toolbar input,.toolbar select{min-width:min(100%,220px);max-width:100%}
+.table-wrap{-webkit-overflow-scrolling:touch}
+.table-wrap table{max-width:100%}
+@media(min-width:1400px){
+  .content{max-width:1800px;margin-inline:auto}
+}
+@media(min-width:701px) and (max-width:1100px){
+  .app{grid-template-columns:clamp(180px,21vw,230px) minmax(0,1fr)}
+  .content{padding:clamp(14px,2vw,22px)}
+  .pagehead{gap:14px;flex-wrap:wrap}
+  .pagehead h1{font-size:clamp(22px,2.4vw,30px)}
+}
+@media(max-width:700px){
+  .content{padding:14px 10px 26px}
+  .card{padding:12px}
+  .toolbar{gap:8px}
+  .toolbar input,.toolbar select,.toolbar .btn{width:100%;min-width:0;flex:1 1 100%}
+  .table-wrap{overflow-x:auto}
+}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -485,7 +596,7 @@ function cercaComponentePage(){
     ``) +
     `<section class="card">
       <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
-      <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, IDRA o descrizione…" autocomplete="off"><select id="componentAssiemeFilter" aria-label="Filtra per assieme" style="min-width:220px"><option value="">Tutti gli assiemi</option></select><select id="componentLimit" style="min-width:115px"><option value="25">25 risultati</option><option value="50">50 risultati</option><option value="100">100 risultati</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
+      <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, IDRA o descrizione…" autocomplete="off"><select id="componentAssiemeFilter" aria-label="Filtra per assieme" style="min-width:220px"><option value="">Tutti gli assiemi</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
       <div class="toolbar"><button class="btn primary" onclick="openComponentForm('add')">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca. Il filtro ASSIEME mostrerà solo gli assiemi presenti nei risultati della ricerca.</div>
       <div id="componentResults" class="component-results"></div>
@@ -538,7 +649,7 @@ async function searchComponents(){
   const searchBtn=document.getElementById("componentSearchBtn");if(searchBtn)searchBtn.disabled=true;
   try{
     const client=window.supabase.createClient(cfg.url,cfg.key);
-    const limit=Number(document.getElementById("componentLimit").value)||25;
+    
     const columns=["ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_Consignment_Stoc","Pn_CS2","IDRA TI","Descrizione_TI"];
     const norm=v=>String(v??"").toLocaleLowerCase("it-IT").trim();
     const needle=norm(q), assiemeNeedle=norm(selectedAssieme);
@@ -557,7 +668,7 @@ async function searchComponents(){
         if(textMatch&&ass)assiemi.add(ass);
 
         const assiemeMatch=!assiemeNeedle||norm(r["ASSIEME"])===assiemeNeedle;
-        if(textMatch&&assiemeMatch&&matches.length<limit)matches.push(r);
+        if(textMatch&&assiemeMatch)matches.push(r);
       }
       if(batch.length<step)break;
       start+=step;
@@ -569,7 +680,7 @@ async function searchComponents(){
       assiemeFilter.value=opts.find(a=>norm(a)===assiemeNeedle)||"";
     }
     if(!matches.length){msg.textContent="Nessun componente trovato con i filtri selezionati.";return}
-    msg.textContent=`Visualizzati ${matches.length} risultati (limite ${limit}). La tabella mostra circa 20 righe alla volta: scorri al suo interno per gli altri risultati.`;
+    msg.textContent=`Trovati ${matches.length} componenti. Sono visualizzati tutti i risultati corrispondenti; scorri la tabella per consultarli.`;
     window.componentSearchResults=matches;
     out.innerHTML=table(["Seleziona","ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_CS2","IDRA TI","Descrizione_TI"],matches.map((r,i)=>`<tr>
       <td><input type="radio" name="selectedComponent" value="${i}" aria-label="Seleziona componente" onchange="updateEditComponentButton()"></td>
@@ -1210,5 +1321,38 @@ document.addEventListener("change",function(e){
 })();
 
 </script>
+
+
+// Assegna a ogni cella l'etichetta della relativa intestazione: usata nella vista mobile.
+function labelResponsiveTables(root=document){
+  root.querySelectorAll('.table-wrap table').forEach(table=>{
+    const headers=Array.from(table.querySelectorAll('thead th')).map(th=>
+      (th.innerText||th.textContent||'').replace(/\s+/g,' ').trim()
+    );
+    if(!headers.length)return;
+    table.querySelectorAll('tbody tr').forEach(row=>{
+      Array.from(row.children).forEach((cell,index)=>{
+        if(cell.tagName!=='TD'||cell.hasAttribute('colspan'))return;
+        const label=headers[index]||`Campo ${index+1}`;
+        cell.setAttribute('data-label',label);
+      });
+    });
+  });
+}
+labelResponsiveTables();
+const responsiveTableObserver=new MutationObserver(records=>{
+  for(const record of records){
+    if(record.type==='childList'){
+      record.addedNodes.forEach(node=>{
+        if(node.nodeType!==1)return;
+        if(node.matches?.('.table-wrap, .table-wrap table, tbody, tr')||node.querySelector?.('.table-wrap table'))
+          labelResponsiveTables(node);
+        else if(node.closest?.('.table-wrap'))labelResponsiveTables(node.closest('.table-wrap'));
+      });
+    }
+  }
+});
+responsiveTableObserver.observe(document.body,{childList:true,subtree:true});
+
 </body>
 </html>
