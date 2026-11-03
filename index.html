@@ -33,13 +33,17 @@ main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display
 .mobile-menu{display:none}
 
 .component-results{margin-top:16px}
-/* Cerca componente: viewport tabella di circa 20 righe con intestazione fissa */
-#componentResults .table-wrap{max-height:900px;overflow:auto;border:1px solid var(--line);border-radius:9px}
-#componentResults table{border-collapse:separate;border-spacing:0;white-space:nowrap}
-#componentResults thead th{position:sticky;top:0;z-index:2;background:#15223a}
-#componentResults tbody tr:nth-child(even){background:#101b2e}
-#componentResults tbody tr:hover{background:#1b3150}
-#componentResults td{vertical-align:top}.config-box{display:grid;grid-template-columns:1fr 1fr;gap:12px}.config-box .field.full{grid-column:1/-1}.config-status{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}.config-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#7889a5}.config-status.ok{color:var(--green)}.config-status.ok:before{background:var(--green)}.component-detail{white-space:normal;min-width:180px;max-width:320px}.component-pn{font-weight:800;color:#b9dcff}.small-action{padding:7px 10px;font-size:11px}
+/* Cerca componente: stessa impostazione visiva e dimensione della tabella Open Item */
+#componentResults .table-wrap{width:100%;max-width:100%;max-height:520px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--line);border-radius:10px}
+#componentResults .table-wrap table{width:100%!important;min-width:0!important;table-layout:fixed;border-collapse:collapse;white-space:normal}
+#componentResults .table-wrap th,#componentResults .table-wrap td{padding:8px 6px;font-size:11px;white-space:normal;overflow-wrap:anywhere;word-break:normal;vertical-align:top}
+#componentResults .table-wrap th{font-size:9px;letter-spacing:.35px;line-height:1.25;position:sticky;top:0;z-index:2;background:#101b2d;color:#fff}
+#componentResults .table-wrap tbody tr:nth-child(even){background:#fff}
+#componentResults .table-wrap tbody tr:hover{background:#eef5fc}
+#componentResults .table-wrap td{border-bottom:1px solid var(--line)}
+#componentResults .table-wrap td:nth-child(4),#componentResults .table-wrap td:nth-child(10){white-space:normal}
+#componentResults .table-wrap td .component-pn{font-weight:800;color:#0757a6}
+@media(max-width:900px){#componentResults .table-wrap th,#componentResults .table-wrap td{padding:6px 4px;font-size:10px}#componentResults .table-wrap th{font-size:8px}}.config-box{display:grid;grid-template-columns:1fr 1fr;gap:12px}.config-box .field.full{grid-column:1/-1}.config-status{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted)}.config-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#7889a5}.config-status.ok{color:var(--green)}.config-status.ok:before{background:var(--green)}.component-detail{white-space:normal;min-width:180px;max-width:320px}.component-pn{font-weight:800;color:#b9dcff}.small-action{padding:7px 10px;font-size:11px}
 @media(max-width:700px){.config-box{grid-template-columns:1fr}.config-box .field.full{grid-column:auto}}
 
 @media(max-width:1100px){.app{grid-template-columns:210px minmax(0,1fr)}.content{padding:22px 20px}.topbar{padding:0 20px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.columns{grid-template-columns:1fr}}
@@ -578,6 +582,18 @@ async function searchComponents(){
       <td>${escapeHtml(r["Pn_CS2"]||"—")}</td>
       <td>${escapeHtml(r["IDRA TI"]||"—")}</td>
       <td style="white-space:normal;min-width:220px;max-width:360px">${escapeHtml(r["Descrizione_TI"]||"—")}</td></tr>`).join(""));
+    const componentTableWrap=out.querySelector(".table-wrap");
+    if(componentTableWrap){
+      componentTableWrap.style.maxHeight="520px";
+      componentTableWrap.style.overflowY="auto";
+      componentTableWrap.style.overflowX="hidden";
+      componentTableWrap.style.width="100%";
+      componentTableWrap.style.borderRadius="10px";
+      componentTableWrap.querySelectorAll("thead th").forEach(th=>{
+        th.style.position="sticky";th.style.top="0";th.style.zIndex="2";
+        th.style.background="#101b2d";th.style.color="#fff";
+      });
+    }
   }catch(err){
     msg.innerHTML=`<b>Errore durante la ricerca.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Controlla URL, chiave pubblica, nomi delle colonne e policy SELECT (RLS) su magazzino.</span>`;
   }finally{const b=document.getElementById("componentSearchBtn");if(b)b.disabled=false}
