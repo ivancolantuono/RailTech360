@@ -767,7 +767,7 @@ async function loadDropboxOperators(){
   const cfg=getSupabaseConfig();
   if(!window.supabase||!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase non disponibile.");
   const client=window.supabase.createClient(cfg.url,cfg.key);
-  const {data,error}=await client.from("operatori").select('id,Nominativo,Telefono,Squadra,Attivo').eq('Attivo',true).order('Nominativo');
+  const {data,error}=await client.from("operatori").select('id,Nominativo,Telefono,Attivo').eq('Attivo',true).order('Nominativo');
   if(error)throw new Error("Lettura tecnici non riuscita: "+error.message+". Verifica la policy SELECT RLS della tabella operatori.");
   dropboxOperators=(data||[]).filter(o=>String(o.Telefono||"").trim());
   return dropboxOperators;
@@ -780,35 +780,16 @@ function dropboxPhone(raw){
   if(n.startsWith("39"))return n;
   return "39"+n;
 }
+function dropboxWhatsAppUrl(phone,name,path){
+  const msg=`Ciao, ti inoltro il documento manutentivo: ${name}\nPercorso: ${path}\nCollegamento Dropbox: ${DROPBOX_FOLDER_LINK_FOR_MESSAGE}`;
+  return `https://wa.me/${dropboxPhone(phone)}?text=${encodeURIComponent(msg)}`;
+}
 const DROPBOX_FOLDER_LINK_FOR_MESSAGE="https://www.dropbox.com/scl/fo/scoxt6qs8xrzcqzzkrgao/ABTn_-UMsH-Q3lVW_C2NQOQ?rlkey=db28o5pe9lpzxz3nn03duewx1&st=vmuoqytc&dl=0";
 function renderDropboxOperatorSelect(filePath,name){
-  const teams=[...new Set(dropboxOperators.map(o=>String(o.Squadra||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it"));
-  const teamOptions=teams.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
-  return `<div class="dropbox-wa-panel" data-dropbox-panel="${escapeHtml(filePath)}" style="display:grid;gap:8px;min-width:220px;max-width:310px;padding:10px;border:1px solid #d7e0ec;border-radius:9px;background:#f7faff;white-space:normal">
-    <label style="font-size:11px;font-weight:800;color:#40536b">Squadra</label>
-    <select data-dropbox-team="${escapeHtml(filePath)}" style="width:100%;padding:8px;border:1px solid #cbd7e5;border-radius:7px;background:#fff;color:#172337">
-      <option value="">Seleziona una squadra…</option>${teamOptions}
-      <option value="__NO_TEAM__">Senza squadra</option>
-    </select>
-    <div data-dropbox-operators="${escapeHtml(filePath)}" style="display:grid;gap:5px;max-height:150px;overflow:auto;color:#26384f;font-size:12px"><span style="color:#607086">Seleziona prima una squadra.</span></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn small-action" type="button" data-dropbox-select-all="${escapeHtml(filePath)}">Seleziona tutti</button>
-      <button class="btn small-action" type="button" data-dropbox-clear="${escapeHtml(filePath)}">Deseleziona</button>
-    </div>
-    <button class="btn primary small-action" type="button" data-dropbox-whatsapp="${escapeHtml(filePath)}" data-dropbox-file-name="${escapeHtml(name)}">Invia su WhatsApp ↗</button>
-    <button class="btn small-action" type="button" data-dropbox-next="${escapeHtml(filePath)}" hidden>Apri prossimo WhatsApp</button>
-    <span data-dropbox-queue-status="${escapeHtml(filePath)}" class="tiny" style="color:#607086"></span>
-  </div>`;
+  if(!dropboxOperators.length)return '<span class="muted tiny">Nessun tecnico disponibile</span>';
+  const options=dropboxOperators.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.Nominativo||"Tecnico")}</option>`).join("");
+  return `<div style="display:grid;gap:6px;min-width:170px"><select aria-label="Seleziona tecnico WhatsApp" data-dropbox-tech="${escapeHtml(filePath)}" style="max-width:190px">${options}</select><button class="btn small-action" type="button" data-dropbox-whatsapp="${escapeHtml(filePath)}" data-dropbox-file-name="${escapeHtml(name)}">WhatsApp ↗</button></div>`;
 }
-function renderDropboxTeamOperators(path,team){
-  const host=document.querySelector(`[data-dropbox-operators="${CSS.escape(path)}"]`);
-  if(!host)return;
-  const selected=team==="__NO_TEAM__"?dropboxOperators.filter(o=>!String(o.Squadra||"").trim()):dropboxOperators.filter(o=>String(o.Squadra||"").trim()===team);
-  if(!team){host.innerHTML='<span style="color:#607086">Seleziona prima una squadra.</span>';return;}
-  if(!selected.length){host.innerHTML='<span style="color:#a96800">Nessun operatore con numero di telefono in questa squadra.</span>';return;}
-  host.innerHTML=selected.map(o=>`<label style="display:flex;align-items:center;gap:7px;padding:3px 0"><input type="checkbox" data-dropbox-operator="${escapeHtml(path)}" value="${escapeHtml(o.id)}" style="accent-color:#1677d2"> <span>${escapeHtml(o.Nominativo||"Tecnico")}</span></label>`).join("");
-}
-let dropboxWhatsAppQueues={};
 async function loadDropboxFolder(path=null, pushHistory=false){
   const tbody=document.getElementById("dropboxFiles");
   const back=document.getElementById("dropboxBackBtn");
@@ -830,7 +811,7 @@ async function loadDropboxFolder(path=null, pushHistory=false){
     const folders=files.filter(x=>x.type==="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const docs=files.filter(x=>x.type!=="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     tbody.innerHTML=[...folders,...docs].map(file=>{
-      const rawName=String(file.name||"Senza nome"), name=escapeHtml(rawName), filePath=String(file.path||"");
+      const rawName=String(file.name||"Senza nome"), name=escapeHtml(rawName), filePath=String(file.path||""), pathHtml=escapeHtml(filePath||"—");
       if(file.type==="folder")return `<tr><td>📁 Cartella</td><td><b>${name}</b></td><td><button class="btn small-action" type="button" data-dropbox-open-folder="${escapeHtml(filePath)}">Apri cartella →</button></td></tr>`;
       const isPdf=/\.pdf$/i.test(rawName);
       const openBtn=`<button class="btn small-action" type="button" data-dropbox-open-file="${escapeHtml(filePath)}" data-dropbox-file-name="${name}">Apri file ↗</button>`;
@@ -848,53 +829,24 @@ function initDropboxBrowser(){
   document.getElementById("dropboxLoadBtn")?.addEventListener("click",()=>{dropboxCurrentPath=null;dropboxPathHistory=[];loadDropboxFolder(null);});
   document.getElementById("dropboxRefreshBtn")?.addEventListener("click",()=>loadDropboxFolder(dropboxCurrentPath||DROPBOX_START_PATH));
   document.getElementById("dropboxBackBtn")?.addEventListener("click",()=>{const previous=dropboxPathHistory.pop();if(previous)loadDropboxFolder(previous);});
-  document.getElementById("dropboxFiles")?.addEventListener("change",e=>{
-    const teamSelect=e.target.closest("[data-dropbox-team]");
-    if(teamSelect)renderDropboxTeamOperators(teamSelect.dataset.dropboxTeam,teamSelect.value);
-  });
   document.getElementById("dropboxFiles")?.addEventListener("click",async e=>{
-    const folderBtn=e.target.closest("[data-dropbox-open-folder]"),fileBtn=e.target.closest("[data-dropbox-open-file]"),waBtn=e.target.closest("[data-dropbox-whatsapp]"),nextBtn=e.target.closest("[data-dropbox-next]"),allBtn=e.target.closest("[data-dropbox-select-all]"),clearBtn=e.target.closest("[data-dropbox-clear]");
+    const folderBtn=e.target.closest("[data-dropbox-open-folder]"),fileBtn=e.target.closest("[data-dropbox-open-file]"),waBtn=e.target.closest("[data-dropbox-whatsapp]");
     if(folderBtn){loadDropboxFolder(folderBtn.dataset.dropboxOpenFolder,true);return;}
-    if(allBtn||clearBtn){
-      const path=(allBtn||clearBtn).dataset.dropboxSelectAll||(allBtn||clearBtn).dataset.dropboxClear;
-      document.querySelectorAll(`[data-dropbox-operator="${CSS.escape(path)}"]`).forEach(ch=>ch.checked=!!allBtn);
-      return;
-    }
-    if(nextBtn){
-      const path=nextBtn.dataset.dropboxNext,queue=dropboxWhatsAppQueues[path];
-      if(!queue||queue.index>=queue.items.length){nextBtn.hidden=true;return;}
-      const item=queue.items[queue.index++];
-      window.open(`https://wa.me/${item.phone}?text=${encodeURIComponent(item.message)}`,"_blank","noopener,noreferrer");
-      const status=document.querySelector(`[data-dropbox-queue-status="${CSS.escape(path)}"]`);
-      if(status)status.textContent=`Aperte ${queue.index} di ${queue.items.length}.`;
-      if(queue.index>=queue.items.length){nextBtn.hidden=true;if(status)status.textContent+=` Tutte le conversazioni sono state aperte.`;}
-      return;
-    }
     if(waBtn){
-      const path=waBtn.dataset.dropboxWhatsapp,name=waBtn.dataset.dropboxFileName||"documento PDF";
-      const selectedIds=[...document.querySelectorAll(`[data-dropbox-operator="${CSS.escape(path)}"]:checked`)].map(x=>String(x.value));
-      const selected=dropboxOperators.filter(o=>selectedIds.includes(String(o.id)));
-      if(!selected.length){dropboxMessage("Seleziona almeno un operatore della squadra.","error");return;}
-      const invalid=selected.filter(o=>!dropboxPhone(o.Telefono));
-      if(invalid.length){dropboxMessage("Uno o più operatori selezionati non hanno un numero valido.","error");return;}
-      // Apre subito una scheda vuota dal gesto dell'utente, evitando il blocco popup dopo la chiamata asincrona.
-      const firstWindow=window.open("about:blank","_blank");
-      if(!firstWindow){dropboxMessage("Il browser ha bloccato la nuova scheda. Consenti i popup per questo sito e riprova.","error");return;}
-      waBtn.disabled=true;waBtn.textContent="Preparazione…";
+      const path=waBtn.dataset.dropboxWhatsapp, name=waBtn.dataset.dropboxFileName||"documento PDF";
+      const select=document.querySelector(`[data-dropbox-tech="${CSS.escape(path)}"]`);
+      const operator=dropboxOperators.find(o=>String(o.id)===String(select?.value));
+      if(!operator){dropboxMessage("Seleziona un tecnico attivo con numero di telefono.","error");return;}
+      if(!dropboxPhone(operator.Telefono)){dropboxMessage("Il tecnico selezionato non ha un numero valido.","error");return;}
       try{
         dropboxMessage("Recupero del collegamento al PDF per WhatsApp…");
         const linkData=await dropboxRequest({action:"open",path});
         const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
         if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-        const items=selected.map(o=>({phone:dropboxPhone(o.Telefono),message:`Ciao ${o.Nominativo||""}, ti inoltro il documento manutentivo: ${name}\n${pdfUrl}`}));
-        dropboxWhatsAppQueues[path]={items,index:1};
-        firstWindow.location.href=`https://wa.me/${items[0].phone}?text=${encodeURIComponent(items[0].message)}`;
-        const next=document.querySelector(`[data-dropbox-next="${CSS.escape(path)}"]`),status=document.querySelector(`[data-dropbox-queue-status="${CSS.escape(path)}"]`);
-        if(next)next.hidden=items.length<=1;
-        if(status)status.textContent=items.length>1?`Conversazione 1 di ${items.length} aperta. Premi “Apri prossimo WhatsApp” per il successivo.`:"Conversazione WhatsApp aperta. Completa l'invio da WhatsApp.";
-        dropboxMessage(`WhatsApp aperto per ${selected[0].Nominativo||"il primo operatore"}. ${items.length>1?`Restano ${items.length-1} conversazioni: premi “Apri prossimo WhatsApp” nella riga del PDF.`:"Conferma l'invio direttamente in WhatsApp."}`);
-      }catch(err){try{firstWindow.close();}catch{}dropboxMessage("Impossibile preparare WhatsApp: "+(err.message||String(err)),"error");}
-      finally{waBtn.disabled=false;waBtn.textContent="Invia su WhatsApp ↗";}
+        const message=`Ciao ${operator.Nominativo||""}, ti inoltro il documento manutentivo: ${name}\n${pdfUrl}`;
+        window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
+        dropboxMessage("WhatsApp aperto con il messaggio e il collegamento al PDF. Il collegamento temporaneo potrebbe scadere.");
+      }catch(err){dropboxMessage("Impossibile preparare il messaggio WhatsApp: "+(err.message||String(err)),"error");}
       return;
     }
     if(fileBtn){
