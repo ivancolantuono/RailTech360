@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#f3f6fb">
 <link rel="apple-touch-icon" sizes="180x180" href="railway-maintenance-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="railway-maintenance-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -284,6 +284,18 @@ input,select,textarea{max-width:100%;}
   .mobile-tools-grid button:focus-visible{outline:3px solid #42c9ff!important;outline-offset:2px;}
 }
 
+
+/* Correzione definitiva: Cerca componente in modalita chiara */
+#componentResults .table-wrap{background:#fff!important;color:#26384f!important;}
+#componentResults table{background:#fff!important;color:#26384f!important;}
+#componentResults thead th{background:#f4f7fb!important;color:#5c6e84!important;border-bottom:1px solid #d7e0ec!important;}
+#componentResults tbody tr,
+#componentResults tbody tr:nth-child(even),
+#componentResults tbody tr:nth-child(odd){background:#fff!important;color:#26384f!important;}
+#componentResults tbody tr:hover{background:#f0f7ff!important;}
+#componentResults tbody td{background:transparent!important;color:#26384f!important;border-bottom:1px solid #e6ebf2!important;}
+#componentResults .component-pn{color:#145fa8!important;}
+#componentResults input[type="radio"]{accent-color:#1677d2!important;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
