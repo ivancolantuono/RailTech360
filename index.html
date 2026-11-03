@@ -790,6 +790,23 @@ function renderDropboxOperatorSelect(filePath,name){
   const options=dropboxOperators.map(o=>`<option value="${escapeHtml(o.id)}">${escapeHtml(o.Nominativo||"Tecnico")}</option>`).join("");
   return `<div style="display:grid;gap:6px;min-width:170px"><select aria-label="Seleziona tecnico WhatsApp" data-dropbox-tech="${escapeHtml(filePath)}" style="max-width:190px">${options}</select><button class="btn small-action" type="button" data-dropbox-whatsapp="${escapeHtml(filePath)}" data-dropbox-file-name="${escapeHtml(name)}">WhatsApp ↗</button></div>`;
 }
+function setDropboxTableLimit(){
+  const wrap=document.getElementById("dropboxFilesWrap");
+  const table=wrap?.querySelector("table");
+  if(!wrap||!table)return;
+  const head=table.querySelector("thead");
+  const firstRow=table.querySelector("tbody tr");
+  const headerHeight=head?.getBoundingClientRect().height||42;
+  const rowHeight=firstRow?.getBoundingClientRect().height||42;
+  // Mantiene visibili al massimo 15 righe, oltre all'intestazione.
+  wrap.style.maxHeight=`${Math.ceil(headerHeight+rowHeight*15)}px`;
+  wrap.style.overflowY="auto";
+  wrap.style.overflowX="auto";
+  head?.querySelectorAll("th").forEach(th=>{
+    th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#111b2e";
+  });
+}
+
 async function loadDropboxFolder(path=null, pushHistory=false){
   const tbody=document.getElementById("dropboxFiles");
   const back=document.getElementById("dropboxBackBtn");
@@ -807,7 +824,7 @@ async function loadDropboxFolder(path=null, pushHistory=false){
     label.textContent=(dropboxCurrentPath===DROPBOX_START_PATH||!dropboxPathHistory.length) ? (data.folder||"Manuali e fiche (Treni 01 a 58)") : dropboxCurrentPath;
     back.disabled=dropboxPathHistory.length===0;
     const files=Array.isArray(data.files)?data.files:[];
-    if(!files.length){tbody.innerHTML='<tr><td colspan="3" class="empty">Questa cartella è vuota.</td></tr>';dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
+    if(!files.length){tbody.innerHTML='<tr><td colspan="3" class="empty">Questa cartella è vuota.</td></tr>';requestAnimationFrame(setDropboxTableLimit);dropboxMessage("Cartella caricata: nessun elemento trovato.");return;}
     const folders=files.filter(x=>x.type==="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const docs=files.filter(x=>x.type!=="folder").sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     tbody.innerHTML=[...folders,...docs].map(file=>{
@@ -818,6 +835,7 @@ async function loadDropboxFolder(path=null, pushHistory=false){
       const wa=isPdf?renderDropboxOperatorSelect(filePath,rawName):'';
       return `<tr><td>${isPdf?"📄 PDF":"📎 File"}</td><td><b>${name}</b></td><td><div style="display:grid;gap:7px;justify-items:start">${openBtn}${wa}</div></td></tr>`;
     }).join("");
+    requestAnimationFrame(setDropboxTableLimit);
     dropboxMessage(`Cartella caricata correttamente · ${files.length} elementi.`);
   }catch(err){
     tbody.innerHTML='<tr><td colspan="3" class="empty">Impossibile caricare la cartella.</td></tr>';
@@ -921,7 +939,7 @@ function renderOpenItemsFiltered(){
     <td style="white-space:normal;min-width:160px">${escapeHtml(x.lavorazioni||"—")}</td>
     <td>${escapeHtml(x.avanzamento||"—")}</td><td>${pill(x.stato||"APERTO")}</td><td>${escapeHtml(x.data_creazione?new Date(x.data_creazione).toLocaleString("it-IT"):"—")}</td><td><div class="actions"><button class="btn small-action" onclick='editOpenItem(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Modifica</button><button class="btn small-action" onclick="deleteOpenItem(${Number(x.id)})">Elimina</button></div></td></tr>`).join(""));
   const oiTableWrap=out.querySelector(".table-wrap");
-  if(oiTableWrap){oiTableWrap.style.maxHeight="420px";oiTableWrap.style.overflowY="auto";oiTableWrap.style.overflowX="hidden";oiTableWrap.style.width="100%";oiTableWrap.style.borderRadius="10px";oiTableWrap.querySelectorAll("thead th").forEach(th=>{th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#101b2d";});}
+  if(oiTableWrap){oiTableWrap.style.maxHeight="520px";oiTableWrap.style.overflowY="auto";oiTableWrap.style.overflowX="hidden";oiTableWrap.style.width="100%";oiTableWrap.style.borderRadius="10px";oiTableWrap.querySelectorAll("thead th").forEach(th=>{th.style.position="sticky";th.style.top="0";th.style.zIndex="2";th.style.background="#101b2d";});}
 }
 async function loadOpenItems(){
   const msg=document.getElementById("openItemMessage"),out=document.getElementById("openItemResults");
