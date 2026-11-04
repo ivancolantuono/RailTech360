@@ -1036,7 +1036,12 @@ function scadenzePage(){
       <div class="toolbar" style="margin-bottom:8px"><input id="dropboxPdfSearchInput" type="search" placeholder="Parola, codice DIAG, part number…" style="min-width:220px"><button class="btn" id="dropboxPdfFoldersBtn" type="button">📁 Scegli cartelle</button><button class="btn primary" id="dropboxPdfSearchBtn" type="button">Cerca nei PDF selezionati</button><button class="btn" id="dropboxPdfStopBtn" type="button" disabled>■ Ferma</button></div>
       <div id="dropboxPdfFolderPicker" style="display:none;border:1px solid #d7e3ef;border-radius:9px;padding:10px;margin:8px 0;max-height:230px;overflow:auto;background:#fff"><div class="muted tiny">Carica l'elenco delle cartelle per scegliere dove cercare.</div></div>
       <div id="dropboxPdfSearchStatus" class="muted tiny" role="status">Pronto per la ricerca. Se non selezioni cartelle, la ricerca verrà eseguita in tutto l'archivio.</div>
-      <div id="dropboxPdfSearchResults" style="display:grid;gap:9px;margin-top:12px"></div>
+      <div id="dropboxPdfSearchResultsWrap" style="display:none;margin-top:12px;max-height:360px;overflow:auto;border:1px solid #d7e3ef;border-radius:9px;background:#fff">
+        <table id="dropboxPdfSearchResultsTable" style="width:100%;border-collapse:collapse;min-width:760px">
+          <thead><tr><th style="position:sticky;top:0;z-index:2;background:#111b2e;color:#fff">Documento</th><th style="position:sticky;top:0;z-index:2;background:#111b2e;color:#fff">Pagina</th><th style="position:sticky;top:0;z-index:2;background:#111b2e;color:#fff">Occorrenze</th><th style="position:sticky;top:0;z-index:2;background:#111b2e;color:#fff">Testo trovato</th><th style="position:sticky;top:0;z-index:2;background:#111b2e;color:#fff">Azioni</th></tr></thead>
+          <tbody id="dropboxPdfSearchResults"><tr><td colspan="5" class="empty">I risultati della ricerca compariranno qui.</td></tr></tbody>
+        </table>
+      </div>
     </div>
     <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
     <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
@@ -1074,14 +1079,38 @@ async function dropboxRequest(body){
 let dropboxPdfSearchCancelled=false;
 function dropboxPdfSearchStatus(text){const el=document.getElementById("dropboxPdfSearchStatus");if(el)el.textContent=text;}
 function dropboxPdfSearchResult(item){
-  const host=document.getElementById("dropboxPdfSearchResults");if(!host)return;
-  const card=document.createElement("div");card.style.cssText="border:1px solid #d7e3ef;border-radius:10px;padding:11px;background:#fff;color:#24364d";
-  const title=document.createElement("div");title.style.cssText="font-weight:800;overflow-wrap:anywhere";title.textContent=item.name;
-  const meta=document.createElement("div");meta.style.cssText="font-size:11px;color:#64748b;margin:3px 0 7px";meta.textContent=`Pagina ${item.page} · ${item.matches} occorrenze`;
-  const excerpt=document.createElement("div");excerpt.style.cssText="font-size:12px;line-height:1.45;overflow-wrap:anywhere";excerpt.textContent=item.excerpt;
-  const btn=document.createElement("button");btn.className="btn small-action";btn.type="button";btn.textContent="Apri PDF ↗";btn.style.marginTop="8px";
-  btn.addEventListener("click",async()=>{try{dropboxPdfSearchStatus("Preparazione apertura PDF…");const d=await dropboxRequest({action:"open",path:item.path});const url=d.link||d.temporary_link||d.url;if(!url)throw new Error("Link Dropbox non disponibile.");window.open(url,"_blank","noopener,noreferrer");}catch(e){dropboxPdfSearchStatus("Errore apertura: "+(e.message||String(e)));}});
-  card.append(title,meta,excerpt,btn);host.appendChild(card);
+  const host=document.getElementById("dropboxPdfSearchResults");
+  const wrap=document.getElementById("dropboxPdfSearchResultsWrap");
+  if(!host)return;
+  if(wrap)wrap.style.display="block";
+  const tr=document.createElement("tr");
+  const tdName=document.createElement("td");tdName.style.cssText="font-weight:700;min-width:180px;overflow-wrap:anywhere";tdName.textContent=item.name||"Documento PDF";
+  const tdPage=document.createElement("td");tdPage.textContent=String(item.page??"—");
+  const tdMatches=document.createElement("td");tdMatches.textContent=String(item.matches??0);
+  const tdExcerpt=document.createElement("td");tdExcerpt.style.cssText="min-width:260px;max-width:420px;white-space:normal;overflow-wrap:anywhere;font-size:12px;line-height:1.4";tdExcerpt.textContent=item.excerpt||"";
+  const tdActions=document.createElement("td");tdActions.style.cssText="min-width:230px";
+  const actions=document.createElement("div");actions.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
+  const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent="Apri file ↗";
+  openBtn.addEventListener("click",async()=>{try{dropboxPdfSearchStatus("Preparazione apertura PDF…");const d=await dropboxRequest({action:"open",path:item.path});const url=d.link||d.temporary_link||d.url;if(!url)throw new Error("Link Dropbox non disponibile.");window.open(url,"_blank","noopener,noreferrer");}catch(e){dropboxPdfSearchStatus("Errore apertura: "+(e.message||String(e)));}});
+  const select=document.createElement("select");select.setAttribute("aria-label","Seleziona tecnico per WhatsApp");select.style.cssText="max-width:160px;min-width:145px";
+  select.dataset.searchTechPath=item.path;
+  if(dropboxOperators.length){for(const operator of dropboxOperators){if(!String(operator.Telefono||"").trim())continue;const option=document.createElement("option");option.value=String(operator.id);option.textContent=operator.Nominativo||"Tecnico";select.appendChild(option);}}
+  if(!select.options.length){const option=document.createElement("option");option.value="";option.textContent="Nessun tecnico";select.appendChild(option);select.disabled=true;}
+  const waBtn=document.createElement("button");waBtn.className="btn small-action";waBtn.type="button";waBtn.textContent="WhatsApp ↗";waBtn.disabled=select.disabled;
+  waBtn.addEventListener("click",async()=>{
+    const operator=dropboxOperators.find(o=>String(o.id)===String(select.value));
+    if(!operator||!dropboxPhone(operator.Telefono)){dropboxPdfSearchStatus("Seleziona un tecnico attivo con numero di telefono valido.");return;}
+    try{
+      dropboxPdfSearchStatus("Recupero del collegamento al PDF per WhatsApp…");
+      const linkData=await dropboxRequest({action:"open",path:item.path});
+      const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
+      if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
+      const message=`Ciao ${operator.Nominativo||""}, ti inoltro il documento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).\n${pdfUrl}`;
+      window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
+      dropboxPdfSearchStatus("WhatsApp aperto con il documento e il collegamento Dropbox.");
+    }catch(e){dropboxPdfSearchStatus("Impossibile preparare WhatsApp: "+(e.message||String(e)));}
+  });
+  actions.append(openBtn,select,waBtn);tdActions.appendChild(actions);tr.append(tdName,tdPage,tdMatches,tdExcerpt,tdActions);host.appendChild(tr);
 }
 async function dropboxDownloadPdf(path){
   const cfg=getSupabaseConfig();if(!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase mancante.");
@@ -1115,11 +1144,12 @@ async function loadDropboxPdfFolders(){
 function selectedDropboxPdfFolders(){const picker=document.getElementById("dropboxPdfFolderPicker");return Array.from(picker?.querySelectorAll('input[type="checkbox"]:checked')||[]).map(x=>x.value);}
 
 async function runDropboxPdfSearch(){
-  const input=document.getElementById("dropboxPdfSearchInput"),btn=document.getElementById("dropboxPdfSearchBtn"),stop=document.getElementById("dropboxPdfStopBtn"),results=document.getElementById("dropboxPdfSearchResults");
+  const input=document.getElementById("dropboxPdfSearchInput"),btn=document.getElementById("dropboxPdfSearchBtn"),stop=document.getElementById("dropboxPdfStopBtn"),results=document.getElementById("dropboxPdfSearchResults"),resultsWrap=document.getElementById("dropboxPdfSearchResultsWrap");
   const query=(input?.value||"").trim();if(!query){dropboxPdfSearchStatus("Inserisci una parola o un codice da cercare.");input?.focus();return;}
   if(!window.pdfjsLib){dropboxPdfSearchStatus("Libreria PDF.js non caricata. Verifica la connessione Internet e ricarica la pagina.");return;}
+  if(!dropboxOperators.length){try{await loadDropboxOperators();}catch(e){console.warn("Elenco tecnici non disponibile per WhatsApp:",e);}}
   window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  const terms=query.toLocaleLowerCase("it").split(/\s+/).filter(Boolean);dropboxPdfSearchCancelled=false;btn.disabled=true;stop.disabled=false;results.innerHTML="";
+  const terms=query.toLocaleLowerCase("it").split(/\s+/).filter(Boolean);dropboxPdfSearchCancelled=false;btn.disabled=true;stop.disabled=false;results.innerHTML="";if(resultsWrap)resultsWrap.style.display="none";
   try{
     dropboxPdfSearchStatus("Lettura elenco completo dei PDF su Dropbox…");
     const selectedPaths=selectedDropboxPdfFolders();
@@ -1148,7 +1178,7 @@ async function runDropboxPdfSearch(){
       }catch(err){skipped++;console.warn("PDF non analizzabile:",file.name,err);}
     }
     dropboxPdfSearchStatus(dropboxPdfSearchCancelled?`Ricerca interrotta. Analizzati ${checked} PDF · ${found} pagine trovate.`:`Ricerca completata. Analizzati ${checked} PDF · ${found} pagine trovate${skipped?` · ${skipped} PDF non leggibili`:""}.`);
-    if(!found&&!dropboxPdfSearchCancelled){const empty=document.createElement("div");empty.className="muted tiny";empty.textContent="Nessuna corrispondenza trovata nei PDF con testo selezionabile. I documenti scansionati potrebbero richiedere OCR.";results.appendChild(empty);}
+    if(!found&&!dropboxPdfSearchCancelled){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="empty";td.textContent="Nessuna corrispondenza trovata nei PDF con testo selezionabile. I documenti scansionati potrebbero richiedere OCR.";tr.appendChild(td);results.appendChild(tr);if(resultsWrap)resultsWrap.style.display="block";}
   }catch(err){dropboxPdfSearchStatus("Ricerca non riuscita: "+(err.message||String(err)));}
   finally{btn.disabled=false;stop.disabled=true;}
 }
