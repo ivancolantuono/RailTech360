@@ -571,6 +571,12 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
   #dropboxPdfSearchResultsTable td[data-label="Azioni"] select{width:100%!important;min-width:0!important;max-width:none!important;min-height:42px!important}
 }
 
+
+/* Intestazioni tabella: testo bianco in Open Item e Archivio Dropbox */
+#openItemResults .table-wrap thead th,
+#dropboxFilesWrap thead th {
+  color: #ffffff !important;
+}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1062,7 +1068,7 @@ function scadenzePage(){
   `<section class="card" style="margin-bottom:16px">
     <div class="card-head"><div><h2>Archivio</h2><p class="muted tiny" style="margin:5px 0 0">Naviga cartelle e sottocartelle e apri i PDF direttamente dal browser.</p></div><span class="status s-done">COLLEGATO</span></div>
     <div class="card" style="padding:14px;margin:0 0 14px;background:#f7fbff;border-color:#cbdff2">
-      <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel contenuto dei PDF</div>
+      <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel contenuto di tutti i PDF</div>
       <p class="muted tiny" style="margin:0 0 10px">Esamina progressivamente tutti i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non saranno riconosciuti da questa prima versione.</p>
       <div class="toolbar" style="margin-bottom:8px"><input id="dropboxPdfSearchInput" type="search" placeholder="Parola, codice DIAG, part number…" style="min-width:220px"><button class="btn" id="dropboxPdfFoldersBtn" type="button">📁 Scegli cartelle</button><button class="btn primary" id="dropboxPdfSearchBtn" type="button">Cerca nei PDF selezionati</button><button class="btn" id="dropboxPdfStopBtn" type="button" disabled>■ Ferma</button></div>
       <div id="dropboxPdfFolderPicker" style="display:none;border:1px solid #d7e3ef;border-radius:9px;padding:10px;margin:8px 0;max-height:230px;overflow:auto;background:#fff"><div class="muted tiny">Carica l'elenco delle cartelle per scegliere dove cercare.</div></div>
