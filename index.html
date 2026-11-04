@@ -1033,8 +1033,9 @@ function scadenzePage(){
     <div class="card" style="padding:14px;margin:0 0 14px;background:#f7fbff;border-color:#cbdff2">
       <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel contenuto di tutti i PDF</div>
       <p class="muted tiny" style="margin:0 0 10px">Esamina progressivamente tutti i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non saranno riconosciuti da questa prima versione.</p>
-      <div class="toolbar" style="margin-bottom:8px"><input id="dropboxPdfSearchInput" type="search" placeholder="Parola, codice DIAG, part number…" style="min-width:220px"><button class="btn primary" id="dropboxPdfSearchBtn" type="button">Cerca in tutti i PDF</button><button class="btn" id="dropboxPdfStopBtn" type="button" disabled>■ Ferma</button></div>
-      <div id="dropboxPdfSearchStatus" class="muted tiny" role="status">Pronto per la ricerca.</div>
+      <div class="toolbar" style="margin-bottom:8px"><input id="dropboxPdfSearchInput" type="search" placeholder="Parola, codice DIAG, part number…" style="min-width:220px"><button class="btn" id="dropboxPdfFoldersBtn" type="button">📁 Scegli cartelle</button><button class="btn primary" id="dropboxPdfSearchBtn" type="button">Cerca nei PDF selezionati</button><button class="btn" id="dropboxPdfStopBtn" type="button" disabled>■ Ferma</button></div>
+      <div id="dropboxPdfFolderPicker" style="display:none;border:1px solid #d7e3ef;border-radius:9px;padding:10px;margin:8px 0;max-height:230px;overflow:auto;background:#fff"><div class="muted tiny">Carica l'elenco delle cartelle per scegliere dove cercare.</div></div>
+      <div id="dropboxPdfSearchStatus" class="muted tiny" role="status">Pronto per la ricerca. Se non selezioni cartelle, la ricerca verrà eseguita in tutto l'archivio.</div>
       <div id="dropboxPdfSearchResults" style="display:grid;gap:9px;margin-top:12px"></div>
     </div>
     <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
@@ -1091,6 +1092,28 @@ async function dropboxDownloadPdf(path){
   const type=response.headers.get("content-type")||"";if(type.includes("application/json")){const d=await response.json();throw new Error(d.error||"Dropbox non ha restituito il PDF.");}
   return await response.arrayBuffer();
 }
+let dropboxPdfFoldersCache=[];
+async function loadDropboxPdfFolders(){
+  const btn=document.getElementById("dropboxPdfFoldersBtn"),picker=document.getElementById("dropboxPdfFolderPicker");
+  if(!picker)return;
+  if(picker.style.display!=="none"&&picker.dataset.loaded==="1"){picker.style.display="none";return;}
+  picker.style.display="block";picker.innerHTML='<div class="muted tiny">Lettura cartelle Dropbox in corso…</div>';if(btn)btn.disabled=true;
+  try{
+    const data=await dropboxRequest({action:"scan_folders"});dropboxPdfFoldersCache=Array.isArray(data.folders)?data.folders:[];
+    picker.innerHTML="";
+    const top=document.createElement("div");top.style.cssText="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px";
+    const all=document.createElement("button");all.className="btn small-action";all.type="button";all.textContent="Seleziona tutte";all.addEventListener("click",()=>picker.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=true));
+    const none=document.createElement("button");none.className="btn small-action";none.type="button";none.textContent="Deseleziona tutte";none.addEventListener("click",()=>picker.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=false));
+    const note=document.createElement("span");note.className="muted tiny";note.textContent=`${dropboxPdfFoldersCache.length} sottocartelle trovate · senza selezioni si cerca in tutto l'archivio`;
+    top.append(all,none,note);picker.append(top);
+    if(!dropboxPdfFoldersCache.length){const empty=document.createElement("div");empty.className="muted tiny";empty.textContent="Non risultano sottocartelle: verrà esaminata la cartella principale.";picker.append(empty);}
+    for(const folder of dropboxPdfFoldersCache){const label=document.createElement("label");label.style.cssText="display:flex;gap:8px;align-items:flex-start;padding:5px 2px;font-size:12px;overflow-wrap:anywhere;cursor:pointer";const cb=document.createElement("input");cb.type="checkbox";cb.value=folder.path;cb.style.marginTop="2px";const name=document.createElement("span");name.textContent=folder.path;label.append(cb,name);picker.append(label);}
+    picker.dataset.loaded="1";
+  }catch(err){picker.innerHTML=`<div class="notice">Impossibile caricare le cartelle: ${ccmEsc(err.message||String(err))}</div>`;}
+  finally{if(btn)btn.disabled=false;}
+}
+function selectedDropboxPdfFolders(){const picker=document.getElementById("dropboxPdfFolderPicker");return Array.from(picker?.querySelectorAll('input[type="checkbox"]:checked')||[]).map(x=>x.value);}
+
 async function runDropboxPdfSearch(){
   const input=document.getElementById("dropboxPdfSearchInput"),btn=document.getElementById("dropboxPdfSearchBtn"),stop=document.getElementById("dropboxPdfStopBtn"),results=document.getElementById("dropboxPdfSearchResults");
   const query=(input?.value||"").trim();if(!query){dropboxPdfSearchStatus("Inserisci una parola o un codice da cercare.");input?.focus();return;}
@@ -1099,7 +1122,8 @@ async function runDropboxPdfSearch(){
   const terms=query.toLocaleLowerCase("it").split(/\s+/).filter(Boolean);dropboxPdfSearchCancelled=false;btn.disabled=true;stop.disabled=false;results.innerHTML="";
   try{
     dropboxPdfSearchStatus("Lettura elenco completo dei PDF su Dropbox…");
-    const listing=await dropboxRequest({action:"scan_list"});const files=Array.isArray(listing.files)?listing.files:[];
+    const selectedPaths=selectedDropboxPdfFolders();
+    const listing=await dropboxRequest({action:"scan_list",paths:selectedPaths});const files=Array.isArray(listing.files)?listing.files:[];
     if(!files.length){dropboxPdfSearchStatus("Nessun PDF trovato nella cartella Dropbox e nelle sottocartelle.");return;}
     let checked=0,found=0,skipped=0;const maxFiles=Number(listing.total||files.length);
     for(const file of files){
@@ -1209,6 +1233,7 @@ async function loadDropboxFolder(path=null, pushHistory=false){
 }
 function initDropboxBrowser(){
   document.getElementById("dropboxPdfSearchBtn")?.addEventListener("click",runDropboxPdfSearch);
+  document.getElementById("dropboxPdfFoldersBtn")?.addEventListener("click",loadDropboxPdfFolders);
   document.getElementById("dropboxPdfSearchInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")runDropboxPdfSearch();});
   document.getElementById("dropboxPdfStopBtn")?.addEventListener("click",()=>{dropboxPdfSearchCancelled=true;dropboxPdfSearchStatus("Interruzione richiesta: termino il PDF attualmente in lettura…");});
   loadDropboxOperators().then(()=>{if(dropboxCurrentPath)loadDropboxFolder(dropboxCurrentPath)}).catch(err=>dropboxMessage(err.message||String(err),"error"));
