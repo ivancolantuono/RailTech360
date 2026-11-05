@@ -17,7 +17,21 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh}
 .sidebar{background:#0d1628;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:24px}
 .brand{display:flex;align-items:center;gap:11px;padding:0 10px}.brand-icon{width:39px;height:39px;border-radius:12px;background:linear-gradient(135deg,#287de7,#39d2dc);display:grid;place-items:center;font-size:21px;font-weight:900;color:#071426}.brand strong{display:block;font-size:16px;letter-spacing:.2px}.brand small{color:var(--muted);font-size:11px}
-.nav-label{font-size:10px;color:#7285a5;font-weight:800;letter-spacing:1.6px;padding:0 13px;margin-bottom:7px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:#9fb0ca;text-align:left;padding:11px 13px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button:hover{background:#17243a;color:white}.nav button.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}.nav .ico{width:20px;text-align:center;font-size:16px}.side-bottom{margin-top:auto;border:1px solid var(--line);background:#111c30;padding:13px;border-radius:12px}.side-bottom b{font-size:12px}.side-bottom p{font-size:11px;color:var(--muted);margin:5px 0 0}
+.nav-label{font-size:10px;color:#7285a5;font-weight:800;letter-spacing:1.6px;padding:0 13px;margin-bottom:7px}.nav{display:grid;gap:7px}
+.nav-group{border:1px solid rgba(130,155,190,.13);border-radius:11px;background:rgba(255,255,255,.018);overflow:hidden}
+.nav-group summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:11px;padding:12px 13px;color:#e2eaf6;font-size:13px;font-weight:750;user-select:none}
+.nav-group summary::-webkit-details-marker{display:none}
+.nav-group summary:hover{background:#17243a}
+.nav-group[open] summary{color:#fff;background:rgba(37,76,125,.22)}
+.nav-group .group-icon{width:20px;text-align:center;color:#82b8ef;font-size:16px}
+.nav-group .group-chevron{margin-left:auto;color:#8194b1;font-size:15px;transition:transform .18s}
+.nav-group[open] .group-chevron{transform:rotate(180deg)}
+.nav-submenu{display:grid;gap:3px;padding:4px 6px 7px 13px}
+.nav-submenu button{width:100%;border:0;background:transparent;color:#9fb0ca;text-align:left;padding:10px 11px;border-radius:9px;display:flex;gap:10px;align-items:center;font-size:12px}
+.nav-submenu button:hover{background:#17243a;color:white}
+.nav-submenu button.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}
+.nav-submenu .ico{width:19px;text-align:center;font-size:15px}
+.nav button{border:0;background:transparent;color:#9fb0ca;text-align:left;padding:11px 13px;border-radius:10px;display:flex;gap:12px;align-items:center}.nav button:hover{background:#17243a;color:white}.nav button.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}.nav .ico{width:20px;text-align:center;font-size:16px}.side-bottom{margin-top:auto;border:1px solid var(--line);background:#111c30;padding:13px;border-radius:12px}.side-bottom b{font-size:12px}.side-bottom p{font-size:11px;color:var(--muted);margin:5px 0 0}
 main{min-width:0}.topbar{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#0b1323;position:sticky;top:0;z-index:4}.crumb{color:var(--muted);font-size:12px}.top-actions{display:flex;align-items:center;gap:12px}.badge-demo{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#f7c86b;border:1px solid #72572a;background:#302717;padding:6px 9px;border-radius:7px;font-weight:800}.avatar{width:34px;height:34px;border-radius:50%;background:#24466d;color:#cce6ff;display:grid;place-items:center;font-weight:800}
 .content{padding:28px 30px 40px;max-width:1600px;margin:auto}.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:24px}.eyebrow{color:var(--cyan);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800}.pagehead h1{margin:5px 0;font-size:27px;letter-spacing:-.7px}.pagehead p{color:var(--muted);margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:#17243a;color:var(--text);padding:10px 14px;border-radius:9px;font-weight:650}.btn:hover{border-color:#5276a4}.btn.primary{background:var(--blue);border-color:var(--blue);color:#071426}.btn.subtle{background:transparent}.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}.kpi-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px}.kpi-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#1b3150;color:#8ec4ff;font-size:17px}.kpi-num{font-size:29px;font-weight:800;letter-spacing:-1px;margin:10px 0 3px}.kpi-foot{color:var(--muted);font-size:11px}.kpi-foot span{color:var(--green)}
@@ -622,15 +636,30 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 <aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-icon" aria-label="Logo ferroviario" title="Railway Maintenance"><svg viewBox="0 0 48 48" width="30" height="30" role="img" aria-hidden="true"><path d="M14 5h20c5 0 8 4 8 9v16c0 4-2 7-6 9l4 4h-7l-4-4h-10l-4 4H8l4-5c-4-2-6-5-6-9V14c0-5 3-9 8-9Z" fill="#f5fbff"/><path d="M15 11h18c2 0 3 1 3 3v10H12V14c0-2 1-3 3-3Z" fill="#287de7"/><path d="M12 28h24v3c0 3-2 5-5 5H17c-3 0-5-2-5-5Z" fill="#49d4e8"/><circle cx="17" cy="31" r="2" fill="#0d1628"/><circle cx="31" cy="31" r="2" fill="#0d1628"/><path d="M18 7h12" stroke="#49d4e8" stroke-width="2" stroke-linecap="round"/></svg></div><div><strong>Railway Maintenance</strong><small>Maintenance intelligence</small></div></div>
   <div><div class="nav-label">WORKSPACE</div><nav class="nav" id="nav">
-    <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
-    <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
-    <button data-page="archivioScadenze"><span class="ico">◷</span>Archivio scadenze</button>
-    <button data-page="ricercaPdf"><span class="ico">⌕</span>Ricerca contenuto PDF</button>
-    <button data-page="sensori"><span class="ico">⌁</span>Misurazione sensori</button>
-    <button data-page="fde"><span class="ico">⌕</span>Analizza Log FDE</button>
-    <button data-page="ccm"><span class="ico">▦</span>Analizza Log CCM</button>
-    <button data-page="mcm"><span class="ico">⌁</span>Analizza Log MCM</button>
-    <button data-page="lcm"><span class="ico">ϟ</span>Analizza Log LCM</button>
+    <details class="nav-group" data-group="magazzino" open>
+      <summary><span class="group-icon">▣</span><span>Magazzino</span><span class="group-chevron">⌄</span></summary>
+      <div class="nav-submenu">
+        <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
+        <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
+      </div>
+    </details>
+    <details class="nav-group" data-group="scadenze">
+      <summary><span class="group-icon">◷</span><span>Scadenze</span><span class="group-chevron">⌄</span></summary>
+      <div class="nav-submenu">
+        <button data-page="archivioScadenze"><span class="ico">▤</span>Archivio</button>
+        <button data-page="ricercaPdf"><span class="ico">⌕</span>Ricerca PDF</button>
+      </div>
+    </details>
+    <details class="nav-group" data-group="diagnostica">
+      <summary><span class="group-icon">⌁</span><span>Diagnostica</span><span class="group-chevron">⌄</span></summary>
+      <div class="nav-submenu">
+        <button data-page="fde"><span class="ico">⌕</span>Analizza Log FDE</button>
+        <button data-page="ccm"><span class="ico">▦</span>Analizza Log CCM</button>
+        <button data-page="mcm"><span class="ico">⌁</span>Analizza Log MCM</button>
+        <button data-page="lcm"><span class="ico">ϟ</span>Analizza Log LCM</button>
+        <button data-page="sensori"><span class="ico">∿</span>Misurazione sensori</button>
+      </div>
+    </details>
   </nav></div>
 
 </aside>
@@ -1395,7 +1424,7 @@ function initDropboxBrowser(){
   });
 }
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",openitem:"magazzino",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
