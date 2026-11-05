@@ -1164,7 +1164,8 @@ function dropboxPdfSearchResult(item){
       const linkData=await dropboxRequest({action:"open",path:item.path});
       const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
       if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-      const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).\nTreno: ${details.train}\nODL padre: ${details.odl}\nScadenza: ${details.deadline}\nCollegamento Dropbox: ${pdfUrl}`;
+      const optionalDetails=[details.train?`Treno: ${details.train}`:"",details.odl?`ODL padre: ${details.odl}`:"",details.deadline?`Scadenza: ${details.deadline}`:""].filter(Boolean).join("\n");
+      const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).${optionalDetails?"\n"+optionalDetails:""}\nCollegamento Dropbox: ${pdfUrl}`;
       window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
       dropboxPdfSearchStatus("WhatsApp aperto con documento, treno, ODL padre e scadenza.");
     }catch(e){dropboxPdfSearchStatus("Impossibile preparare WhatsApp: "+(e.message||String(e)));}
@@ -1261,11 +1262,11 @@ function openWhatsAppDetailsForm(){
     const title=document.createElement("h3");title.textContent="Dati per messaggio WhatsApp";title.style.cssText="margin:0 0 4px;font-size:19px";
     const makeField=(labelText,control)=>{const wrap=document.createElement("label");wrap.style.cssText="display:grid;gap:6px;font-size:13px;font-weight:700";const label=document.createElement("span");label.textContent=labelText;wrap.append(label,control);return wrap;};
     const common="width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#172033;font:inherit";
-    const train=document.createElement("select");train.style.cssText=common;train.required=true;
+    const train=document.createElement("select");train.style.cssText=common;
     const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleziona il treno";train.append(placeholder);
     for(let i=1;i<=150;i++){const o=document.createElement("option");o.value=`ETR1000-${String(i).padStart(2,"0")}`;o.textContent=o.value;train.append(o);}
-    const odl=document.createElement("input");odl.type="text";odl.placeholder="Inserisci ODL padre";odl.required=true;odl.style.cssText=common;
-    const deadline=document.createElement("select");deadline.style.cssText=common;deadline.required=true;
+    const odl=document.createElement("input");odl.type="text";odl.placeholder="Inserisci ODL padre (facoltativo)";odl.style.cssText=common;
+    const deadline=document.createElement("select");deadline.style.cssText=common;
     const empty=document.createElement("option");empty.value="";empty.textContent="Seleziona scadenza";deadline.append(empty);
     ["F0","F2","F3","F4","R1","R3","ML"].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;deadline.append(o);});
     const buttons=document.createElement("div");buttons.style.cssText="display:flex;justify-content:flex-end;gap:9px;margin-top:5px";
@@ -1273,7 +1274,7 @@ function openWhatsAppDetailsForm(){
     const submit=document.createElement("button");submit.type="submit";submit.textContent="Continua con WhatsApp";submit.style.cssText="padding:10px 15px;border:0;border-radius:8px;background:#1769aa;color:white;font-weight:700;cursor:pointer";
     const close=value=>{overlay.remove();resolve(value);};
     cancel.addEventListener("click",()=>close(null));overlay.addEventListener("click",e=>{if(e.target===overlay)close(null);});
-    panel.addEventListener("submit",e=>{e.preventDefault();if(!panel.reportValidity())return;close({train:train.value,odl:odl.value.trim(),deadline:deadline.value});});
+    panel.addEventListener("submit",e=>{e.preventDefault();close({train:train.value,odl:odl.value.trim(),deadline:deadline.value});});
     buttons.append(cancel,submit);panel.append(title,makeField("Treno",train),makeField("ODL padre",odl),makeField("Scadenza",deadline),buttons);overlay.append(panel);document.body.append(overlay);train.focus();
   });
 }
@@ -1371,7 +1372,8 @@ function initDropboxBrowser(){
         const linkData=await dropboxRequest({action:"open",path});
         const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
         if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-        const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${name}\nTreno: ${details.train}\nODL padre: ${details.odl}\nScadenza: ${details.deadline}\nCollegamento Dropbox: ${pdfUrl}`;
+        const optionalDetails=[details.train?`Treno: ${details.train}`:"",details.odl?`ODL padre: ${details.odl}`:"",details.deadline?`Scadenza: ${details.deadline}`:""].filter(Boolean).join("\n");
+        const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${name}${optionalDetails?"\n"+optionalDetails:""}\nCollegamento Dropbox: ${pdfUrl}`;
         window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
         dropboxMessage("WhatsApp aperto con documento, treno, ODL padre e scadenza. Il collegamento temporaneo potrebbe scadere.");
       }catch(err){dropboxMessage("Impossibile preparare il messaggio WhatsApp: "+(err.message||String(err)),"error");}
