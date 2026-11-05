@@ -783,7 +783,7 @@ function cercaComponentePage(){
   return head("Cerca componente","Ricerca nel catalogo ricambi e componenti su Supabase",
     ``) +
     `<section class="card">
-      <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
+      <div class="card-head"><h2>Ricerca</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, IDRA o descrizione…" autocomplete="off"><select id="componentAssiemeFilter" aria-label="Filtra per assieme" style="min-width:220px"><option value="">Tutti gli assiemi</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
       <div class="toolbar"><button class="btn primary" onclick="requestAddComponentAccess()">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca. Il filtro ASSIEME mostrerà solo gli assiemi presenti nei risultati della ricerca.</div>
