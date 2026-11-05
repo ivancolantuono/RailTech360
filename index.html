@@ -1373,6 +1373,14 @@ function newIntervento(){content.innerHTML=head("Nuovo intervento","Registra una
 document.getElementById("intForm").addEventListener("submit",e=>{e.preventDefault();let f=new FormData(e.target);data.interventi.unshift({id:"INT-"+String(269+data.interventi.length-4).padStart(4,"0"),...Object.fromEntries(f)});save();go("interventi");toast("Intervento salvato in questo browser.")})}
 function editIntervento(i){let x=data.interventi[i];content.innerHTML=head(x.id,"Dettaglio intervento",`<button class="btn" onclick="go('interventi')">← Torna al registro</button>`)+`<section class="card"><div class="grid columns"><div><div class="eyebrow">ATTIVITÀ</div><h2>${x.titolo}</h2><p class="muted">${x.treno} · Cassa ${x.cassa}</p></div><div><div class="muted tiny">STATO</div>${pill(x.stato)}<p class="muted tiny" style="margin-top:12px">${fmt(x.data)} · ${x.tecnico}</p></div></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><p><b>Esito:</b> ${x.esito||"Non definito"}</p><p><b>Note:</b> ${x.note||"Nessuna nota"}</p><button class="btn primary" onclick="setCompleted('${x.id}')">Segna completato</button></section>`}
 function setCompleted(id){let x=data.interventi.find(x=>x.id===id);if(x){x.stato="Completato";if(!x.esito)x.esito="Da confermare";save();go("interventi");toast("Stato aggiornato nella demo.")}}
+function updateNewOiCassaSelection(){
+  const selected=[...document.querySelectorAll('#newOiCassaOptions input[type="checkbox"]:checked')].map(el=>el.value);
+  const hidden=document.getElementById("newOiCassaValue");
+  const label=document.getElementById("newOiCassaLabel");
+  if(hidden)hidden.value=selected.join(", ");
+  if(label)label.textContent=selected.length?`${selected.length} selezionat${selected.length===1?"a":"e"}`:"Nessuna selezionata";
+}
+
 function newOpenItem(){
   const oiTreni=Array.from({length:150},(_,i)=>`ETR1000-${String(i+1).padStart(2,"0")}`);
   const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8"];
@@ -1380,7 +1388,7 @@ function newOpenItem(){
   content.innerHTML=head("Nuovo Open Item","Registra un'anomalia nel database condiviso")+
   `<section class="card"><form id="oiForm"><div class="form-grid">
   <div class="field"><label>Treno *</label><select name="treno" required><option value="">Seleziona treno…</option>${oiTreni.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
-  <div class="field"><label>Cassa</label><select name="cassa"><option value="">Seleziona cassa…</option>${oiCasse.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
+  <div class="field"><label>Casse / apparati</label><details class="oi-multiselect" id="newOiCassaPicker"><summary><span>Seleziona una o più casse…</span><b id="newOiCassaLabel">Nessuna selezionata</b></summary><div class="oi-multiselect-options" id="newOiCassaOptions">${oiCasse.map(v=>`<label class="oi-filter-option"><input type="checkbox" value="${v}" onchange="updateNewOiCassaSelection()"><span>${v}</span></label>`).join("")}</div></details><input type="hidden" name="cassa" id="newOiCassaValue"></div>
   <div class="field"><label>Impianto / apparato</label><select name="impianto"><option value="">Seleziona impianto…</option>${oiImpianti.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
   <div class="field"><label>Stato</label><select name="stato"><option value="APERTO">APERTO</option><option value="IN LAVORAZIONE">IN LAVORAZIONE</option><option value="CHIUSO">CHIUSO</option></select></div>
   <div class="field full"><label>Descrizione anomalia *</label><textarea name="descrizione" required placeholder="Descrivi il problema riscontrato…"></textarea></div>
@@ -1390,6 +1398,9 @@ function newOpenItem(){
   </div><div class="form-actions"><button type="button" class="btn" onclick="go('openitem')">Annulla</button><button class="btn primary" id="saveOpenItemBtn">Salva Open Item</button></div></form></section>`;
   document.getElementById("oiForm").addEventListener("submit",async e=>{
     e.preventDefault();
+    updateNewOiCassaSelection();
+    const selectedCasse=document.getElementById("newOiCassaValue")?.value||"";
+    if(!selectedCasse){toast("Seleziona almeno una cassa.");document.getElementById("newOiCassaPicker")?.scrollIntoView({behavior:"smooth",block:"center"});return;}
     const btn=document.getElementById("saveOpenItemBtn");btn.disabled=true;btn.textContent="Salvataggio…";
     const f=Object.fromEntries(new FormData(e.target));
     const payload={treno:f.treno.trim(),descrizione:f.descrizione.trim(),stato:f.stato,utente:f.utente.trim()||null,lavorazioni:f.lavorazioni.trim()||null,cassa:f.cassa.trim()||null,impianto:f.impianto.trim()||null,avanzamento:f.avanzamento.trim()||null};
@@ -1436,7 +1447,11 @@ function renderOpenItemsFiltered(){
   const norm=v=>String(v??"").trim().toLocaleLowerCase("it-IT");
   const selected={treno:oiSelectedValues("oiFilterTreno"),cassa:oiSelectedValues("oiFilterCassa"),impianto:oiSelectedValues("oiFilterImpianto")};
   oiFilterConfig.forEach(cfg=>{const label=document.getElementById(cfg.label);if(label){const n=selected[cfg.key].length;label.textContent=n?`${n} selezionat${cfg.key==="cassa"?"e":"i"}`:cfg.empty;}});
-  const list=openItemsCache.filter(x=>["treno","cassa","impianto"].every(key=>!selected[key].length||selected[key].some(v=>norm(v)===norm(x[key]))));
+  const list=openItemsCache.filter(x=>["treno","cassa","impianto"].every(key=>{
+    if(!selected[key].length)return true;
+    const stored=key==="cassa"?String(x[key]??"").split(/[,;|]/).map(v=>norm(v)).filter(Boolean):[norm(x[key])];
+    return selected[key].some(v=>stored.includes(norm(v)));
+  }));
   msg.textContent=`Visualizzati ${list.length} Open Item su ${openItemsCache.length}.`;
   if(!list.length){out.innerHTML='<div class="empty">Nessun Open Item corrisponde ai filtri selezionati.</div>';return;}
   out.innerHTML=table(["Treno","Descrizione","Cassa / Impianto","Lavorazioni","Avanzamento","Stato","Creato il","Azioni"],list.map(x=>`<tr>
