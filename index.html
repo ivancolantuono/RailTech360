@@ -1374,11 +1374,14 @@ document.getElementById("intForm").addEventListener("submit",e=>{e.preventDefaul
 function editIntervento(i){let x=data.interventi[i];content.innerHTML=head(x.id,"Dettaglio intervento",`<button class="btn" onclick="go('interventi')">← Torna al registro</button>`)+`<section class="card"><div class="grid columns"><div><div class="eyebrow">ATTIVITÀ</div><h2>${x.titolo}</h2><p class="muted">${x.treno} · Cassa ${x.cassa}</p></div><div><div class="muted tiny">STATO</div>${pill(x.stato)}<p class="muted tiny" style="margin-top:12px">${fmt(x.data)} · ${x.tecnico}</p></div></div><hr style="border:0;border-top:1px solid var(--line);margin:20px 0"><p><b>Esito:</b> ${x.esito||"Non definito"}</p><p><b>Note:</b> ${x.note||"Nessuna nota"}</p><button class="btn primary" onclick="setCompleted('${x.id}')">Segna completato</button></section>`}
 function setCompleted(id){let x=data.interventi.find(x=>x.id===id);if(x){x.stato="Completato";if(!x.esito)x.esito="Da confermare";save();go("interventi");toast("Stato aggiornato nella demo.")}}
 function newOpenItem(){
+  const oiTreni=Array.from({length:150},(_,i)=>`ETR1000-${String(i+1).padStart(2,"0")}`);
+  const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8"];
+  const oiImpianti=["Trazione","Freno","Antincendio","Carrello","Tcms","Porte Esterne","Pis","Toilette","Accoppiatore","Alta Tensione","Bar-Bistrot","Climatizzazione","Pantografo","Porte Interne"];
   content.innerHTML=head("Nuovo Open Item","Registra un'anomalia nel database condiviso")+
   `<section class="card"><form id="oiForm"><div class="form-grid">
-  <div class="field"><label>Treno *</label><input name="treno" required placeholder="ETR1000 · 102"></div>
-  <div class="field"><label>Cassa</label><input name="cassa" placeholder="M6, M3, TT7…"></div>
-  <div class="field"><label>Impianto / apparato</label><input name="impianto" placeholder="HVAC, CCM, antincendio…"></div>
+  <div class="field"><label>Treno *</label><select name="treno" required><option value="">Seleziona treno…</option>${oiTreni.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
+  <div class="field"><label>Cassa</label><select name="cassa"><option value="">Seleziona cassa…</option>${oiCasse.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
+  <div class="field"><label>Impianto / apparato</label><select name="impianto"><option value="">Seleziona impianto…</option>${oiImpianti.map(v=>`<option value="${v}">${v}</option>`).join("")}</select></div>
   <div class="field"><label>Stato</label><select name="stato"><option value="APERTO">APERTO</option><option value="IN LAVORAZIONE">IN LAVORAZIONE</option><option value="CHIUSO">CHIUSO</option></select></div>
   <div class="field full"><label>Descrizione anomalia *</label><textarea name="descrizione" required placeholder="Descrivi il problema riscontrato…"></textarea></div>
   <div class="field full"><label>Lavorazioni / interventi eseguiti</label><textarea name="lavorazioni" placeholder="Inserire gli interventi effettuati o da effettuare…"></textarea></div>
