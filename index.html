@@ -783,7 +783,7 @@ function cercaComponentePage(){
   return head("Cerca componente","Ricerca nel catalogo ricambi e componenti su Supabase",
     ``) +
     `<section class="card">
-      <div class="card-head"><h2>Ricerca</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
+      <div class="card-head"><h2>Ricerca catalogo</h2><span id="supabaseStatus" class="config-status ${cfg.url&&cfg.key?'':' '}">${cfg.url&&cfg.key?'Configurazione presente':'Database non configurato'}</span></div>
       <div class="toolbar"><input id="componentQuery" placeholder="Part number, componente, IDRA o descrizione…" autocomplete="off"><select id="componentAssiemeFilter" aria-label="Filtra per assieme" style="min-width:220px"><option value="">Tutti gli assiemi</option></select><button class="btn primary" id="componentSearchBtn" onclick="searchComponents()">Cerca</button></div>
       <div class="toolbar"><button class="btn primary" onclick="requestAddComponentAccess()">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca. Il filtro ASSIEME mostrerà solo gli assiemi presenti nei risultati della ricerca.</div>
@@ -1158,14 +1158,15 @@ function dropboxPdfSearchResult(item){
   waBtn.addEventListener("click",async()=>{
     const operator=dropboxOperators.find(o=>String(o.id)===String(select.value));
     if(!operator||!dropboxPhone(operator.Telefono)){dropboxPdfSearchStatus("Seleziona un tecnico attivo con numero di telefono valido.");return;}
+    const details=await openWhatsAppDetailsForm();if(!details)return;
     try{
       dropboxPdfSearchStatus("Recupero del collegamento al PDF per WhatsApp…");
       const linkData=await dropboxRequest({action:"open",path:item.path});
       const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
       if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-      const message=`Ciao ${operator.Nominativo||""}, ti inoltro il documento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).\n${pdfUrl}`;
+      const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).\nTreno: ${details.train}\nODL padre: ${details.odl}\nScadenza: ${details.deadline}\nCollegamento Dropbox: ${pdfUrl}`;
       window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
-      dropboxPdfSearchStatus("WhatsApp aperto con il documento e il collegamento Dropbox.");
+      dropboxPdfSearchStatus("WhatsApp aperto con documento, treno, ODL padre e scadenza.");
     }catch(e){dropboxPdfSearchStatus("Impossibile preparare WhatsApp: "+(e.message||String(e)));}
   });
   actions.append(openBtn,select,waBtn);tdActions.appendChild(actions);tr.append(tdName,tdPage,tdMatches,tdExcerpt,tdActions);host.appendChild(tr);
@@ -1249,6 +1250,32 @@ async function loadDropboxOperators(){
   if(error)throw new Error("Lettura tecnici non riuscita: "+error.message+". Verifica la policy SELECT RLS della tabella operatori.");
   dropboxOperators=(data||[]).filter(o=>String(o.Telefono||"").trim());
   return dropboxOperators;
+}
+function openWhatsAppDetailsForm(){
+  return new Promise(resolve=>{
+    document.getElementById("waDetailsModal")?.remove();
+    const overlay=document.createElement("div");overlay.id="waDetailsModal";
+    overlay.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px";
+    const panel=document.createElement("form");
+    panel.style.cssText="background:#fff;color:#172033;width:min(440px,100%);border-radius:14px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.28);display:grid;gap:13px;max-height:90vh;overflow:auto";
+    const title=document.createElement("h3");title.textContent="Dati per messaggio WhatsApp";title.style.cssText="margin:0 0 4px;font-size:19px";
+    const makeField=(labelText,control)=>{const wrap=document.createElement("label");wrap.style.cssText="display:grid;gap:6px;font-size:13px;font-weight:700";const label=document.createElement("span");label.textContent=labelText;wrap.append(label,control);return wrap;};
+    const common="width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#172033;font:inherit";
+    const train=document.createElement("select");train.style.cssText=common;train.required=true;
+    const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Seleziona il treno";train.append(placeholder);
+    for(let i=1;i<=150;i++){const o=document.createElement("option");o.value=`ETR1000-${String(i).padStart(2,"0")}`;o.textContent=o.value;train.append(o);}
+    const odl=document.createElement("input");odl.type="text";odl.placeholder="Inserisci ODL padre";odl.required=true;odl.style.cssText=common;
+    const deadline=document.createElement("select");deadline.style.cssText=common;deadline.required=true;
+    const empty=document.createElement("option");empty.value="";empty.textContent="Seleziona scadenza";deadline.append(empty);
+    ["F0","F2","F3","F4","R1","R3","ML"].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;deadline.append(o);});
+    const buttons=document.createElement("div");buttons.style.cssText="display:flex;justify-content:flex-end;gap:9px;margin-top:5px";
+    const cancel=document.createElement("button");cancel.type="button";cancel.textContent="Annulla";cancel.style.cssText="padding:10px 15px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#172033;cursor:pointer";
+    const submit=document.createElement("button");submit.type="submit";submit.textContent="Continua con WhatsApp";submit.style.cssText="padding:10px 15px;border:0;border-radius:8px;background:#1769aa;color:white;font-weight:700;cursor:pointer";
+    const close=value=>{overlay.remove();resolve(value);};
+    cancel.addEventListener("click",()=>close(null));overlay.addEventListener("click",e=>{if(e.target===overlay)close(null);});
+    panel.addEventListener("submit",e=>{e.preventDefault();if(!panel.reportValidity())return;close({train:train.value,odl:odl.value.trim(),deadline:deadline.value});});
+    buttons.append(cancel,submit);panel.append(title,makeField("Treno",train),makeField("ODL padre",odl),makeField("Scadenza",deadline),buttons);overlay.append(panel);document.body.append(overlay);train.focus();
+  });
 }
 function dropboxPhone(raw){
   let n=String(raw||"").trim().replace(/[^\d+]/g,"");
@@ -1338,14 +1365,15 @@ function initDropboxBrowser(){
       const operator=dropboxOperators.find(o=>String(o.id)===String(select?.value));
       if(!operator){dropboxMessage("Seleziona un tecnico attivo con numero di telefono.","error");return;}
       if(!dropboxPhone(operator.Telefono)){dropboxMessage("Il tecnico selezionato non ha un numero valido.","error");return;}
+      const details=await openWhatsAppDetailsForm();if(!details)return;
       try{
         dropboxMessage("Recupero del collegamento al PDF per WhatsApp…");
         const linkData=await dropboxRequest({action:"open",path});
         const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
         if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-        const message=`Ciao ${operator.Nominativo||""}, ti inoltro il documento manutentivo: ${name}\n${pdfUrl}`;
+        const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${name}\nTreno: ${details.train}\nODL padre: ${details.odl}\nScadenza: ${details.deadline}\nCollegamento Dropbox: ${pdfUrl}`;
         window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
-        dropboxMessage("WhatsApp aperto con il messaggio e il collegamento al PDF. Il collegamento temporaneo potrebbe scadere.");
+        dropboxMessage("WhatsApp aperto con documento, treno, ODL padre e scadenza. Il collegamento temporaneo potrebbe scadere.");
       }catch(err){dropboxMessage("Impossibile preparare il messaggio WhatsApp: "+(err.message||String(err)),"error");}
       return;
     }
@@ -1383,7 +1411,7 @@ function updateNewOiCassaSelection(){
 
 function newOpenItem(){
   const oiTreni=Array.from({length:150},(_,i)=>`ETR1000-${String(i+1).padStart(2,"0")}`);
-  const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8","INTERO TRENO"];
+  const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8"];
   const oiImpianti=["Trazione","Freno","Antincendio","Carrello","Tcms","Porte Esterne","Pis","Toilette","Accoppiatore","Alta Tensione","Bar-Bistrot","Climatizzazione","Pantografo","Porte Interne"];
   content.innerHTML=head("Nuovo Open Item","Registra un'anomalia nel database condiviso")+
   `<section class="card"><form id="oiForm"><div class="form-grid">
