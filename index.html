@@ -1383,7 +1383,7 @@ function updateNewOiCassaSelection(){
 
 function newOpenItem(){
   const oiTreni=Array.from({length:150},(_,i)=>`ETR1000-${String(i+1).padStart(2,"0")}`);
-  const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8"];
+  const oiCasse=["DM1","TT2","M3","T4","T5","M6","TT7","DM8","INTERO TRENO"];
   const oiImpianti=["Trazione","Freno","Antincendio","Carrello","Tcms","Porte Esterne","Pis","Toilette","Accoppiatore","Alta Tensione","Bar-Bistrot","Climatizzazione","Pantografo","Porte Interne"];
   content.innerHTML=head("Nuovo Open Item","Registra un'anomalia nel database condiviso")+
   `<section class="card"><form id="oiForm"><div class="form-grid">
