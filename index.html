@@ -18,6 +18,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .sidebar{background:#0d1628;border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:24px}
 .brand{display:flex;align-items:center;gap:11px;padding:0 10px}.brand-icon{width:39px;height:39px;border-radius:12px;background:linear-gradient(135deg,#287de7,#39d2dc);display:grid;place-items:center;font-size:21px;font-weight:900;color:#071426}.brand strong{display:block;font-size:16px;letter-spacing:.2px}.brand small{color:var(--muted);font-size:11px}
 .nav-label{font-size:10px;color:#7285a5;font-weight:800;letter-spacing:1.6px;padding:0 13px;margin-bottom:7px}.nav{display:grid;gap:7px}
+.nav>.nav-standalone{width:100%;border:1px solid rgba(130,155,190,.13);background:rgba(255,255,255,.018);color:#e2eaf6;text-align:left;padding:12px 13px;border-radius:11px;display:flex;gap:11px;align-items:center;font-size:13px;font-weight:750}.nav>.nav-standalone:hover{background:#17243a;color:#fff}.nav>.nav-standalone.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}.nav>.nav-standalone .ico{width:20px;text-align:center;font-size:16px}
 .nav-group{border:1px solid rgba(130,155,190,.13);border-radius:11px;background:rgba(255,255,255,.018);overflow:hidden}
 .nav-group summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:11px;padding:12px 13px;color:#e2eaf6;font-size:13px;font-weight:750;user-select:none}
 .nav-group summary::-webkit-details-marker{display:none}
@@ -26,7 +27,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}
 .nav-group .group-icon{width:20px;text-align:center;color:#82b8ef;font-size:16px}
 .nav-group .group-chevron{margin-left:auto;color:#8194b1;font-size:15px;transition:transform .18s}
 .nav-group[open] .group-chevron{transform:rotate(180deg)}
-.nav-submenu{display:grid;gap:3px;padding:4px 6px 7px 13px}
+.nav-submenu{display:grid;gap:3px;padding:4px 6px 7px 13px;margin-left:10px;border-left:1px solid rgba(130,155,190,.22)}
 .nav-submenu button{width:100%;border:0;background:transparent;color:#9fb0ca;text-align:left;padding:10px 11px;border-radius:9px;display:flex;gap:10px;align-items:center;font-size:12px}
 .nav-submenu button:hover{background:#17243a;color:white}
 .nav-submenu button.active{background:#18345b;color:#fff;box-shadow:inset 3px 0 var(--blue)}
@@ -640,9 +641,10 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
       <summary><span class="group-icon">▣</span><span>Magazzino</span><span class="group-chevron">⌄</span></summary>
       <div class="nav-submenu">
         <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
-        <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
+        
       </div>
     </details>
+    <button class="nav-standalone" data-page="openitem"><span class="ico">⚠</span>Open Item</button>
     <details class="nav-group" data-group="scadenze">
       <summary><span class="group-icon">◷</span><span>Scadenze</span><span class="group-chevron">⌄</span></summary>
       <div class="nav-submenu">
@@ -1424,7 +1426,7 @@ function initDropboxBrowser(){
   });
 }
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",openitem:"magazzino",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",openitem:"openitem",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
