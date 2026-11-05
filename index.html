@@ -578,20 +578,21 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
   color: #ffffff !important;
 }
 
-/* Open Item: filtri a selezione multipla */
+/* Open Item: filtri a selezione multipla - tema chiaro coerente con l'app */
 .oi-multifilters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.oi-multiselect{position:relative;min-width:0}
-.oi-multiselect summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:12px 14px;border:1px solid #2b3b56;border-radius:9px;background:#0e182a;color:var(--text);cursor:pointer;user-select:none}
+.oi-multiselect{position:relative;min-width:0;color:#172337;color-scheme:light}
+.oi-multiselect summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:12px 14px;border:1px solid #cbd7e5;border-radius:9px;background:#ffffff;color:#172337;cursor:pointer;user-select:none;box-shadow:0 1px 2px rgba(18,45,78,.04)}
 .oi-multiselect summary::-webkit-details-marker{display:none}
-.oi-multiselect summary:after{content:"▾";color:#8ea5c5;font-size:13px}
-.oi-multiselect[open] summary{border-color:var(--blue);border-bottom-left-radius:0;border-bottom-right-radius:0}
-.oi-multiselect summary span{font-weight:700}
-.oi-multiselect summary b{margin-left:auto;color:#9fcaff;font-size:11px;font-weight:650;white-space:nowrap}
-.oi-multiselect-options{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:260px;overflow:auto;padding:7px;background:#111b2e;border:1px solid var(--blue);border-top:0;border-radius:0 0 9px 9px;box-shadow:0 12px 25px #0006}
-.oi-filter-option{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:6px;color:#eaf1fc;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
-.oi-filter-option:hover{background:#1b2b45}
-.oi-filter-option input{width:16px;height:16px;flex:0 0 16px;accent-color:#4ea1ff}
-@media(max-width:700px){.oi-multifilters{grid-template-columns:1fr}.oi-multiselect-options{position:relative;top:auto;max-height:190px;border-top:1px solid var(--blue);border-radius:0 0 9px 9px}.oi-multiselect[open] summary{border-radius:9px 9px 0 0}}
+.oi-multiselect summary:after{content:"▾";color:#64748b;font-size:13px}
+.oi-multiselect[open] summary{border-color:#1677d2;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.oi-multiselect summary span{font-weight:700;color:#172337}
+.oi-multiselect summary b{margin-left:auto;color:#245b91;font-size:11px;font-weight:650;white-space:nowrap}
+.oi-multiselect-options{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:260px;overflow:auto;padding:7px;background:#ffffff;border:1px solid #1677d2;border-top:0;border-radius:0 0 9px 9px;box-shadow:0 12px 25px rgba(18,45,78,.16)}
+.oi-filter-option{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:6px;color:#172337;font-size:13px;cursor:pointer;overflow-wrap:anywhere}
+.oi-filter-option:hover{background:#eef5fc}
+.oi-filter-option input{width:16px;height:16px;flex:0 0 16px;accent-color:#1677d2}
+.oi-multiselect-options .muted{color:#64748b!important}
+@media(max-width:700px){.oi-multifilters{grid-template-columns:1fr}.oi-multiselect-options{position:relative;top:auto;max-height:190px;border-top:1px solid #1677d2;border-radius:0 0 9px 9px}.oi-multiselect[open] summary{border-radius:9px 9px 0 0}}
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
