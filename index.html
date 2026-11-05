@@ -624,7 +624,8 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
   <div><div class="nav-label">WORKSPACE</div><nav class="nav" id="nav">
     <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
     <button data-page="openitem"><span class="ico">⚠</span>Open Item</button>
-    <button data-page="scadenze"><span class="ico">◷</span>Scadenze</button>
+    <button data-page="archivioScadenze"><span class="ico">◷</span>Archivio scadenze</button>
+    <button data-page="ricercaPdf"><span class="ico">⌕</span>Ricerca contenuto PDF</button>
     <button data-page="sensori"><span class="ico">⌁</span>Misurazione sensori</button>
     <button data-page="fde"><span class="ico">⌕</span>Analizza Log FDE</button>
     <button data-page="ccm"><span class="ico">▦</span>Analizza Log CCM</button>
@@ -748,7 +749,7 @@ try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClo
 function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
 let currentPage="cercaComponente";
 const content=document.getElementById("content");
-const pages={cercaComponente:"Cerca componente",openitem:"Open Item",scadenze:"Scadenze",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM"};
+const pages={cercaComponente:"Cerca componente",openitem:"Open Item",archivioScadenze:"Archivio scadenze",ricercaPdf:"Ricerca contenuto PDF",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM"};
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
@@ -1082,12 +1083,24 @@ function lcmRenderAnalog(row){return LCM_ANALOG_SIGNALS.map(sig=>{let raw=row[si
 function lcmRender(){const host=document.getElementById("lcmWorkspace");if(!host||!lcmParsed)return;let q=(document.getElementById("lcmSearch")?.value||"").trim().toLowerCase(),rows=lcmParsed.summary.filter(r=>!q||String(r[10]||"").toLowerCase().includes(q));let opts=rows.map(r=>({rec:Number(r[0]),desc:String(r[10]||"")}));if(!opts.some(o=>o.rec===lcmSelectedRec))lcmSelectedRec=opts[0]?.rec??null;let sel=opts.find(o=>o.rec===lcmSelectedRec),ll=sel?lcmParsed.llBlocks[sel.rec]||[]:[],idx=Math.min(Number(document.getElementById("lcmTimeline")?.value||0),Math.max(0,ll.length-1)),row=ll[idx]||{},states=lcmDecode(row);let headers=["REC","CODE","DATE","TIME","F1","F2","F3","F4","F5","F6","DESCRIZIONE"];host.innerHTML=`<section class="card" style="margin-top:16px"><h2>📋 Summary</h2><div class="toolbar"><input id="lcmSearch" placeholder="Cerca nella descrizione…" value="${ccmEsc(q)}"><span class="muted tiny">${rows.length} risultati su ${lcmParsed.summary.length}</span></div><div class="table-wrap" style="max-height:360px;overflow:auto"><table><thead><tr>${headers.map(h=>`<th style="position:sticky;top:0">${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${ccmEsc(v)}</td>`).join("")}</tr>`).join("")||`<tr><td colspan="11">Nessun record trovato.</td></tr>`}</tbody></table></div></section><section class="card" style="margin-top:16px"><h2>Analisi campioni LL</h2>${sel?`<div class="field"><label for="lcmRecSelect">Seleziona REC</label><select id="lcmRecSelect">${opts.map(o=>`<option value="${o.rec}" ${o.rec===lcmSelectedRec?"selected":""}>REC ${o.rec} — ${ccmEsc(o.desc)}</option>`).join("")}</select></div>${ll.length?`<div style="margin-top:16px"><label>Timeline campione: <b id="lcmTimelineLabel">${idx+1} / ${ll.length}</b></label><input id="lcmTimeline" type="range" min="0" max="${ll.length-1}" value="${idx}" style="width:100%;margin:10px 0"><div class="notice" id="lcmSampleNotice">Campione <b>${idx+1} / ${ll.length}</b> · N: <b>${ccmEsc(row.N??"—")}</b></div><h3>🔌 Segnali digitali</h3><div class="ccm-grid" id="lcmDigitalGrid">${LCM_WORDS.map(w=>lcmRenderWord(w,states)).join("")}</div><h3 style="margin-top:22px">📈 Segnali analogici</h3><div id="lcmAnalogGrid">${lcmRenderAnalog(row)}</div></div>`:`<div class="notice">Nessun campione LL disponibile per REC ${sel.rec}.</div>`}`:`<div class="notice">Nessun evento corrisponde alla ricerca.</div>`}</section>`;document.getElementById("lcmSearch")?.addEventListener("input",()=>{let el=document.getElementById("lcmSearch"),pos=el.selectionStart;lcmRender();el=document.getElementById("lcmSearch");el.focus();el.setSelectionRange(pos,pos)});document.getElementById("lcmRecSelect")?.addEventListener("change",e=>{lcmSelectedRec=Number(e.target.value);lcmRender()});document.getElementById("lcmTimeline")?.addEventListener("input",e=>{let n=Number(e.target.value),sample=(lcmParsed.llBlocks[lcmSelectedRec]||[])[n]||{},st=lcmDecode(sample),total=(lcmParsed.llBlocks[lcmSelectedRec]||[]).length;document.getElementById("lcmTimelineLabel").textContent=`${n+1} / ${total}`;document.getElementById("lcmSampleNotice").innerHTML=`Campione <b>${n+1} / ${total}</b> · N: <b>${ccmEsc(sample.N??"—")}</b>`;document.getElementById("lcmDigitalGrid").innerHTML=LCM_WORDS.map(w=>lcmRenderWord(w,st)).join("");document.getElementById("lcmAnalogGrid").innerHTML=lcmRenderAnalog(sample)})}
 document.addEventListener("change",async e=>{if(e.target?.id!=="lcmFile"||!e.target.files?.[0])return;let msg=document.getElementById("lcmMessage");msg.textContent="Lettura e analisi del file…";try{lcmParsed=lcmParseText(await e.target.files[0].text());lcmSelectedRec=null;if(!lcmParsed.summary.length){msg.textContent="Nessun Summary trovato. Verifica che il file .CAP sia leggibile come testo.";document.getElementById("lcmWorkspace").innerHTML="";return}msg.innerHTML=`File analizzato: <b>${ccmEsc(e.target.files[0].name)}</b> · ${lcmParsed.summary.length} eventi Summary.`;lcmRender()}catch(err){msg.textContent="Errore durante la lettura: "+(err.message||String(err))}});
 
-function scadenzePage(){
+function archivioScadenzePage(){
   const treni0158="https://app.box.com/s/tqbqc0h53jh22gh7jj993nbto3l89mm8";
   const treni101plus="https://app.box.com/s/f8e8mfxu5erqf1go6mbljkljsitj553g";
-  return head("Scadenze","Consulta l’archivio manutentivo su Dropbox")+
+  return head("Archivio scadenze","Naviga cartelle e sottocartelle Dropbox e apri i documenti manutentivi.")+
   `<section class="card" style="margin-bottom:16px">
     <div class="card-head"><div><h2>Archivio</h2><p class="muted tiny" style="margin:5px 0 0">Naviga cartelle e sottocartelle e apri i PDF direttamente dal browser.</p></div><span class="status s-done">COLLEGATO</span></div>
+    <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
+    <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
+    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Azione / tecnico WhatsApp</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="3" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="dropboxLoadBtn" type="button">📂 Carica cartella</button></div>
+  </section>
+`;
+}
+
+function ricercaPdfPage(){
+  return head("Ricerca contenuto PDF","Cerca parole, codici DIAG e part number nel testo di tutti i PDF presenti nell’archivio Dropbox.")+
+  `<section class="card" style="margin-bottom:16px">
+    <div class="card-head"><div><h2>🔎 Ricerca nel contenuto di tutti i PDF</h2><p class="muted tiny" style="margin:5px 0 0">La ricerca esamina progressivamente i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non sono riconosciuti.</p></div><span class="status s-done">COLLEGATO</span></div>
     <div class="card" style="padding:14px;margin:0 0 14px;background:#f7fbff;border-color:#cbdff2">
       <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel contenuto di tutti i PDF</div>
       <p class="muted tiny" style="margin:0 0 10px">Esamina progressivamente tutti i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non saranno riconosciuti da questa prima versione.</p>
@@ -1101,12 +1114,7 @@ function scadenzePage(){
         </table>
       </div>
     </div>
-    <div class="toolbar"><button class="btn" id="dropboxBackBtn" type="button" disabled>← Indietro</button><button class="btn primary" id="dropboxRefreshBtn" type="button">⟳ Aggiorna</button><span id="dropboxPathLabel" class="muted tiny" style="align-self:center;overflow-wrap:anywhere">Cartella iniziale</span></div>
-    <div id="dropboxMessage" class="notice" role="status">Premi “Carica cartella Dropbox” per visualizzare i documenti.</div>
-    <div class="table-wrap" id="dropboxFilesWrap"><table><thead><tr><th>Tipo</th><th>Nome</th><th>Azione / tecnico WhatsApp</th></tr></thead><tbody id="dropboxFiles"><tr><td colspan="3" class="empty">Cartella non ancora caricata.</td></tr></tbody></table></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="dropboxLoadBtn" type="button">📂 Carica cartella</button></div>
-  </section>
-`;
+  </section>`;
 }
 
 let dropboxCurrentPath = null;
@@ -1387,7 +1395,7 @@ function initDropboxBrowser(){
   });
 }
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,scadenze:scadenzePage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="scadenze")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
