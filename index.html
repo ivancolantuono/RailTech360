@@ -641,6 +641,7 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
       <summary><span class="group-icon">▣</span><span>Magazzino</span><span class="group-chevron">⌄</span></summary>
       <div class="nav-submenu">
         <button class="active" data-page="cercaComponente"><span class="ico">⌕</span>Cerca componente</button>
+        <button data-page="catalogoRicambi"><span class="ico">▤</span>Ricerca catalogo ricambi</button>
         
       </div>
     </details>
@@ -780,7 +781,7 @@ try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClo
 function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
 let currentPage="cercaComponente";
 const content=document.getElementById("content");
-const pages={cercaComponente:"Cerca componente",openitem:"Open Item",archivioScadenze:"Archivio scadenze",ricercaPdf:"Ricerca contenuto PDF",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM"};
+const pages={cercaComponente:"Cerca componente",catalogoRicambi:"Ricerca catalogo ricambi",openitem:"Open Item",archivioScadenze:"Archivio scadenze",ricercaPdf:"Ricerca contenuto PDF",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM"};
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
@@ -1128,13 +1129,16 @@ function archivioScadenzePage(){
 `;
 }
 
-function ricercaPdfPage(){
-  return head("Ricerca contenuto PDF","Cerca parole, codici DIAG e part number nel testo di tutti i PDF presenti nell’archivio Dropbox.")+
+function ricercaPdfPage(isCatalog=false){
+  const pageTitle=isCatalog?"Ricerca catalogo ricambi":"Ricerca contenuto PDF";
+  const intro=isCatalog?"Cerca codici, part number o nomi dei componenti nei PDF del catalogo ricambi Dropbox.":"Cerca parole, codici DIAG e part number nel testo di tutti i PDF presenti nell’archivio Dropbox.";
+  const sourceHint=isCatalog?"catalogo ricambi":"archivio scadenze";
+  return head(pageTitle,intro)+
   `<section class="card" style="margin-bottom:16px">
-    <div class="card-head"><div><h2>🔎 Ricerca nel contenuto di tutti i PDF</h2><p class="muted tiny" style="margin:5px 0 0">La ricerca esamina progressivamente i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non sono riconosciuti.</p></div><span class="status s-done">COLLEGATO</span></div>
+    <div class="card-head"><div><h2>🔎 Ricerca nei PDF</h2><p class="muted tiny" style="margin:5px 0 0">La ricerca esamina progressivamente i PDF della cartella Dropbox dedicata e delle sottocartelle.</p></div><span class="status s-done">DROPBOX</span></div>
     <div class="card" style="padding:14px;margin:0 0 14px;background:#f7fbff;border-color:#cbdff2">
-      <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel contenuto di tutti i PDF</div>
-      <p class="muted tiny" style="margin:0 0 10px">Esamina progressivamente tutti i PDF nella cartella Dropbox e nelle sottocartelle. Non richiede un indice preventivo. I PDF scansionati senza testo selezionabile richiedono OCR e non saranno riconosciuti da questa prima versione.</p>
+      <div style="font-weight:800;margin-bottom:5px;color:#17436b">🔎 Ricerca nel ${sourceHint}</div>
+      <p class="muted tiny" style="margin:0 0 10px">Seleziona le cartelle in cui cercare. La ricerca analizza il testo selezionabile dei PDF; i documenti scansionati senza OCR non saranno riconosciuti.</p>
       <div class="toolbar" style="margin-bottom:8px"><input id="dropboxPdfSearchInput" type="search" placeholder="Parola, codice DIAG, part number…" style="min-width:220px"><button class="btn" id="dropboxPdfFoldersBtn" type="button">📁 Scegli cartelle</button><button class="btn primary" id="dropboxPdfSearchBtn" type="button">Cerca nei PDF selezionati</button><button class="btn" id="dropboxPdfStopBtn" type="button" disabled>■ Ferma</button></div>
       <div id="dropboxPdfFolderPicker" style="display:none;border:1px solid #d7e3ef;border-radius:9px;padding:10px;margin:8px 0;max-height:230px;overflow:auto;background:#fff"><div class="muted tiny">Carica l'elenco delle cartelle per scegliere dove cercare.</div></div>
       <div id="dropboxPdfSearchStatus" class="muted tiny" role="status">Pronto per la ricerca. Se non selezioni cartelle, la ricerca verrà eseguita in tutto l'archivio.</div>
@@ -1174,6 +1178,7 @@ async function dropboxRequest(body){
 }
 
 let dropboxPdfSearchCancelled=false;
+let dropboxPdfSearchSource="scadenze";
 function dropboxPdfSearchStatus(text){const el=document.getElementById("dropboxPdfSearchStatus");if(el)el.textContent=text;}
 function dropboxPdfSearchResult(item){
   const host=document.getElementById("dropboxPdfSearchResults");
@@ -1188,7 +1193,7 @@ function dropboxPdfSearchResult(item){
   const tdActions=document.createElement("td");tdActions.dataset.label="Azioni";tdActions.style.cssText="min-width:230px";
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
   const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent="Apri file ↗";
-  openBtn.addEventListener("click",async()=>{try{dropboxPdfSearchStatus("Preparazione apertura PDF…");const d=await dropboxRequest({action:"open",path:item.path});const url=d.link||d.temporary_link||d.url;if(!url)throw new Error("Link Dropbox non disponibile.");window.open(url,"_blank","noopener,noreferrer");}catch(e){dropboxPdfSearchStatus("Errore apertura: "+(e.message||String(e)));}});
+  openBtn.addEventListener("click",async()=>{try{dropboxPdfSearchStatus("Preparazione apertura PDF…");const d=await dropboxRequest({action:"open",path:item.path,source:dropboxPdfSearchSource});const url=d.link||d.temporary_link||d.url;if(!url)throw new Error("Link Dropbox non disponibile.");window.open(url,"_blank","noopener,noreferrer");}catch(e){dropboxPdfSearchStatus("Errore apertura: "+(e.message||String(e)));}});
   const select=document.createElement("select");select.setAttribute("aria-label","Seleziona tecnico per WhatsApp");select.style.cssText="max-width:160px;min-width:145px";
   select.dataset.searchTechPath=item.path;
   if(dropboxOperators.length){for(const operator of dropboxOperators){if(!String(operator.Telefono||"").trim())continue;const option=document.createElement("option");option.value=String(operator.id);option.textContent=operator.Nominativo||"Tecnico";select.appendChild(option);}}
@@ -1200,7 +1205,7 @@ function dropboxPdfSearchResult(item){
     const details=await openWhatsAppDetailsForm();if(!details)return;
     try{
       dropboxPdfSearchStatus("Recupero del collegamento al PDF per WhatsApp…");
-      const linkData=await dropboxRequest({action:"open",path:item.path});
+      const linkData=await dropboxRequest({action:"open",path:item.path,source:dropboxPdfSearchSource});
       const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
       if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
       const optionalDetails=[details.train?`Treno: ${details.train}`:"",details.odl?`ODL padre: ${details.odl}`:"",details.deadline?`Scadenza: ${details.deadline}`:""].filter(Boolean).join("\n");
@@ -1211,11 +1216,11 @@ function dropboxPdfSearchResult(item){
   });
   actions.append(openBtn,select,waBtn);tdActions.appendChild(actions);tr.append(tdName,tdPage,tdMatches,tdExcerpt,tdActions);host.appendChild(tr);
 }
-async function dropboxDownloadPdf(path){
+async function dropboxDownloadPdf(path,source="scadenze"){
   const cfg=getSupabaseConfig();if(!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase mancante.");
   const {data:sessionData}=await getAuthClient().auth.getSession();const accessToken=sessionData?.session?.access_token;
   if(!accessToken)throw new Error("Sessione scaduta. Accedi nuovamente a Railway Maintenance.");
-  const response=await fetch(cfg.url.replace(/\/$/,"")+"/functions/v1/smooth-action",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+accessToken},body:JSON.stringify({action:"download",path})});
+  const response=await fetch(cfg.url.replace(/\/$/,"")+"/functions/v1/smooth-action",{method:"POST",headers:{"Content-Type":"application/json","apikey":cfg.key,"Authorization":"Bearer "+accessToken},body:JSON.stringify({action:"download",path,source})});
   if(!response.ok){let t=await response.text();throw new Error(`Download PDF non riuscito (${response.status}): ${t.slice(0,180)}`);}
   const type=response.headers.get("content-type")||"";if(type.includes("application/json")){const d=await response.json();throw new Error(d.error||"Dropbox non ha restituito il PDF.");}
   return await response.arrayBuffer();
@@ -1227,7 +1232,7 @@ async function loadDropboxPdfFolders(){
   if(picker.style.display!=="none"&&picker.dataset.loaded==="1"){picker.style.display="none";return;}
   picker.style.display="block";picker.innerHTML='<div class="muted tiny">Lettura cartelle Dropbox in corso…</div>';if(btn)btn.disabled=true;
   try{
-    const data=await dropboxRequest({action:"scan_folders"});dropboxPdfFoldersCache=Array.isArray(data.folders)?data.folders:[];
+    const data=await dropboxRequest({action:"scan_folders",source:dropboxPdfSearchSource});dropboxPdfFoldersCache=Array.isArray(data.folders)?data.folders:[];
     picker.innerHTML="";
     const top=document.createElement("div");top.style.cssText="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px";
     const all=document.createElement("button");all.className="btn small-action";all.type="button";all.textContent="Seleziona tutte";all.addEventListener("click",()=>picker.querySelectorAll('input[type=checkbox]').forEach(x=>x.checked=true));
@@ -1252,7 +1257,7 @@ async function runDropboxPdfSearch(){
   try{
     dropboxPdfSearchStatus("Lettura elenco completo dei PDF su Dropbox…");
     const selectedPaths=selectedDropboxPdfFolders();
-    const listing=await dropboxRequest({action:"scan_list",paths:selectedPaths});const files=Array.isArray(listing.files)?listing.files:[];
+    const listing=await dropboxRequest({action:"scan_list",paths:selectedPaths,source:dropboxPdfSearchSource});const files=Array.isArray(listing.files)?listing.files:[];
     if(!files.length){dropboxPdfSearchStatus(`Nessun PDF individuato nelle ${Number(listing.scanned_folders||0)} cartelle selezionate. Controlla che contengano file con estensione .pdf e che la selezione sia corretta.`);return;}
     let checked=0,found=0,skipped=0;const maxFiles=Number(listing.total||files.length);
     dropboxPdfSearchStatus(`Trovati ${maxFiles} PDF in ${Number(listing.scanned_folders||0)} cartelle. Avvio lettura del contenuto…`);
@@ -1260,7 +1265,7 @@ async function runDropboxPdfSearch(){
       if(dropboxPdfSearchCancelled)break;
       checked++;dropboxPdfSearchStatus(`Analisi PDF ${checked} di ${maxFiles}: ${file.name}`);
       try{
-        const buffer=await dropboxDownloadPdf(file.path);
+        const buffer=await dropboxDownloadPdf(file.path,dropboxPdfSearchSource);
         const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buffer)}).promise;
         let fileMatches=0;
         for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
@@ -1426,7 +1431,7 @@ function initDropboxBrowser(){
   });
 }
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",openitem:"openitem",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",catalogoRicambi:"magazzino",openitem:"openitem",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,catalogoRicambi:()=>ricercaPdfPage(true),openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};dropboxPdfSearchSource=currentPage==="catalogoRicambi"?"catalogo":"scadenze";if(currentPage==="catalogoRicambi"){dropboxCurrentPath=null;dropboxPathHistory=[];}content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf"||currentPage==="catalogoRicambi")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
