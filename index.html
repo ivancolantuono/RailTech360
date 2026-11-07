@@ -1190,31 +1190,47 @@ function dropboxPdfSearchResult(item){
   const tdPage=document.createElement("td");tdPage.dataset.label="Pagina";tdPage.textContent=String(item.page??"—");
   const tdMatches=document.createElement("td");tdMatches.dataset.label="Occorrenze";tdMatches.textContent=String(item.matches??0);
   const tdExcerpt=document.createElement("td");tdExcerpt.dataset.label="Testo trovato";tdExcerpt.style.cssText="min-width:260px;max-width:420px;white-space:normal;overflow-wrap:anywhere;font-size:12px;line-height:1.4";tdExcerpt.textContent=item.excerpt||"";
-  const tdActions=document.createElement("td");tdActions.dataset.label="Azioni";tdActions.style.cssText="min-width:230px";
+  const tdActions=document.createElement("td");tdActions.dataset.label="Azioni";tdActions.style.cssText="min-width:150px";
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
-  const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent="Apri file ↗";
-  openBtn.addEventListener("click",async()=>{try{dropboxPdfSearchStatus("Preparazione apertura PDF…");const d=await dropboxRequest({action:"open",path:item.path,source:dropboxPdfSearchSource});const url=d.link||d.temporary_link||d.url;if(!url)throw new Error("Link Dropbox non disponibile.");window.open(url,"_blank","noopener,noreferrer");}catch(e){dropboxPdfSearchStatus("Errore apertura: "+(e.message||String(e)));}});
-  const select=document.createElement("select");select.setAttribute("aria-label","Seleziona tecnico per WhatsApp");select.style.cssText="max-width:160px;min-width:145px";
-  select.dataset.searchTechPath=item.path;
-  if(dropboxOperators.length){for(const operator of dropboxOperators){if(!String(operator.Telefono||"").trim())continue;const option=document.createElement("option");option.value=String(operator.id);option.textContent=operator.Nominativo||"Tecnico";select.appendChild(option);}}
-  if(!select.options.length){const option=document.createElement("option");option.value="";option.textContent="Nessun tecnico";select.appendChild(option);select.disabled=true;}
-  const waBtn=document.createElement("button");waBtn.className="btn small-action";waBtn.type="button";waBtn.textContent="WhatsApp ↗";waBtn.disabled=select.disabled;
-  waBtn.addEventListener("click",async()=>{
-    const operator=dropboxOperators.find(o=>String(o.id)===String(select.value));
-    if(!operator||!dropboxPhone(operator.Telefono)){dropboxPdfSearchStatus("Seleziona un tecnico attivo con numero di telefono valido.");return;}
-    const details=await openWhatsAppDetailsForm();if(!details)return;
+  const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent=`Apri pagina ${item.page} ↗`;
+  openBtn.addEventListener("click",async()=>{
+    const tab=window.open("about:blank","_blank");
+    if(!tab){dropboxPdfSearchStatus("Il browser ha bloccato la nuova scheda. Consenti i popup per Railway Maintenance e riprova.");return;}
     try{
-      dropboxPdfSearchStatus("Recupero del collegamento al PDF per WhatsApp…");
-      const linkData=await dropboxRequest({action:"open",path:item.path,source:dropboxPdfSearchSource});
-      const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
-      if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
-      const optionalDetails=[details.train?`Treno: ${details.train}`:"",details.odl?`ODL padre: ${details.odl}`:"",details.deadline?`Scadenza: ${details.deadline}`:""].filter(Boolean).join("\n");
-      const message=`Ciao ${operator.Nominativo||""},\nDocumento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).${optionalDetails?"\n"+optionalDetails:""}\nCollegamento Dropbox: ${pdfUrl}`;
-      window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
-      dropboxPdfSearchStatus("WhatsApp aperto con documento, treno, ODL padre e scadenza.");
-    }catch(e){dropboxPdfSearchStatus("Impossibile preparare WhatsApp: "+(e.message||String(e)));}
+      dropboxPdfSearchStatus(`Download di ${item.name||"PDF"} per aprire direttamente la pagina ${item.page}…`);
+      const buffer=await dropboxDownloadPdf(item.path,dropboxPdfSearchSource);
+      const blob=new Blob([buffer],{type:"application/pdf"});
+      const objectUrl=URL.createObjectURL(blob);
+      tab.location.href=objectUrl+`#page=${Math.max(1,Number(item.page)||1)}&zoom=page-fit`;
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),120000);
+      dropboxPdfSearchStatus(`PDF aperto alla pagina ${item.page}.`);
+    }catch(e){tab.close();dropboxPdfSearchStatus("Errore apertura PDF: "+(e.message||String(e)));}
   });
-  actions.append(openBtn,select,waBtn);tdActions.appendChild(actions);tr.append(tdName,tdPage,tdMatches,tdExcerpt,tdActions);host.appendChild(tr);
+  actions.append(openBtn);
+  if(dropboxPdfSearchSource!=="catalogo"){
+    const select=document.createElement("select");select.setAttribute("aria-label","Seleziona tecnico per WhatsApp");select.style.cssText="max-width:160px;min-width:145px";
+    select.dataset.searchTechPath=item.path;
+    if(dropboxOperators.length){for(const operator of dropboxOperators){if(!String(operator.Telefono||"").trim())continue;const option=document.createElement("option");option.value=String(operator.id);option.textContent=operator.Nominativo||"Tecnico";select.appendChild(option);}}
+    if(!select.options.length){const option=document.createElement("option");option.value="";option.textContent="Nessun tecnico";select.appendChild(option);select.disabled=true;}
+    const waBtn=document.createElement("button");waBtn.className="btn small-action";waBtn.type="button";waBtn.textContent="WhatsApp ↗";waBtn.disabled=select.disabled;
+    waBtn.addEventListener("click",async()=>{
+      const operator=dropboxOperators.find(o=>String(o.id)===String(select.value));
+      if(!operator||!dropboxPhone(operator.Telefono)){dropboxPdfSearchStatus("Seleziona un tecnico attivo con numero di telefono valido.");return;}
+      const details=await openWhatsAppDetailsForm();if(!details)return;
+      try{
+        dropboxPdfSearchStatus("Recupero del collegamento al PDF per WhatsApp…");
+        const linkData=await dropboxRequest({action:"open",path:item.path,source:dropboxPdfSearchSource});
+        const pdfUrl=linkData.temporary_link||linkData.link||linkData.url;
+        if(!pdfUrl)throw new Error("Dropbox non ha restituito il collegamento al PDF.");
+        const optionalDetails=[details.train?`Treno: ${details.train}`:"",details.odl?`ODL padre: ${details.odl}`:"",details.deadline?`Scadenza: ${details.deadline}`:""].filter(Boolean).join("\\n");
+        const message=`Ciao ${operator.Nominativo||""},\\nDocumento manutentivo: ${item.name||"documento PDF"} (pagina ${item.page}).${optionalDetails?"\\n"+optionalDetails:""}\\nCollegamento Dropbox: ${pdfUrl}`;
+        window.open(`https://wa.me/${dropboxPhone(operator.Telefono)}?text=${encodeURIComponent(message)}`,"_blank","noopener,noreferrer");
+        dropboxPdfSearchStatus("WhatsApp aperto con documento, treno, ODL padre e scadenza.");
+      }catch(e){dropboxPdfSearchStatus("Impossibile preparare WhatsApp: "+(e.message||String(e)));}
+    });
+    actions.append(select,waBtn);
+  }
+  tdActions.appendChild(actions);tr.append(tdName,tdPage,tdMatches,tdExcerpt,tdActions);host.appendChild(tr);
 }
 async function dropboxDownloadPdf(path,source="scadenze"){
   const cfg=getSupabaseConfig();if(!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase mancante.");
@@ -1251,7 +1267,7 @@ async function runDropboxPdfSearch(){
   const input=document.getElementById("dropboxPdfSearchInput"),btn=document.getElementById("dropboxPdfSearchBtn"),stop=document.getElementById("dropboxPdfStopBtn"),results=document.getElementById("dropboxPdfSearchResults"),resultsWrap=document.getElementById("dropboxPdfSearchResultsWrap");
   const query=(input?.value||"").trim();if(!query){dropboxPdfSearchStatus("Inserisci una parola o un codice da cercare.");input?.focus();return;}
   if(!window.pdfjsLib){dropboxPdfSearchStatus("Libreria PDF.js non caricata. Verifica la connessione Internet e ricarica la pagina.");return;}
-  if(!dropboxOperators.length){try{await loadDropboxOperators();}catch(e){console.warn("Elenco tecnici non disponibile per WhatsApp:",e);}}
+  if(dropboxPdfSearchSource!=="catalogo"&&!dropboxOperators.length){try{await loadDropboxOperators();}catch(e){console.warn("Elenco tecnici non disponibile per WhatsApp:",e);}}
   window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   const terms=query.toLocaleLowerCase("it").split(/\s+/).filter(Boolean);dropboxPdfSearchCancelled=false;btn.disabled=true;stop.disabled=false;results.innerHTML="";if(resultsWrap)resultsWrap.style.display="none";
   try{
