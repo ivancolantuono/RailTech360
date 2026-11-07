@@ -1192,18 +1192,20 @@ function dropboxPdfSearchResult(item){
   const tdExcerpt=document.createElement("td");tdExcerpt.dataset.label="Testo trovato";tdExcerpt.style.cssText="min-width:260px;max-width:420px;white-space:normal;overflow-wrap:anywhere;font-size:12px;line-height:1.4";tdExcerpt.textContent=item.excerpt||"";
   const tdActions=document.createElement("td");tdActions.dataset.label="Azioni";tdActions.style.cssText="min-width:150px";
   const actions=document.createElement("div");actions.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
-  const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent=`Apri pagina ${item.page} ↗`;
+  const openSource=dropboxPdfSearchSource;
+  const openBtn=document.createElement("button");openBtn.className="btn small-action";openBtn.type="button";openBtn.textContent=`Apri PDF a pagina ${item.page} ↗`;openBtn.title=`Apri ${item.name||"il PDF"} direttamente alla pagina ${item.page}`;
   openBtn.addEventListener("click",async()=>{
     const tab=window.open("about:blank","_blank");
     if(!tab){dropboxPdfSearchStatus("Il browser ha bloccato la nuova scheda. Consenti i popup per Railway Maintenance e riprova.");return;}
     try{
       dropboxPdfSearchStatus(`Download di ${item.name||"PDF"} per aprire direttamente la pagina ${item.page}…`);
-      const buffer=await dropboxDownloadPdf(item.path,dropboxPdfSearchSource);
+      const buffer=await dropboxDownloadPdf(item.path,openSource);
       const blob=new Blob([buffer],{type:"application/pdf"});
       const objectUrl=URL.createObjectURL(blob);
-      tab.location.href=objectUrl+`#page=${Math.max(1,Number(item.page)||1)}&zoom=page-fit`;
-      setTimeout(()=>URL.revokeObjectURL(objectUrl),120000);
-      dropboxPdfSearchStatus(`PDF aperto alla pagina ${item.page}.`);
+      const targetPage=Math.max(1,Number(item.page)||1);
+      tab.location.replace(objectUrl+`#page=${targetPage}&zoom=page-fit`);
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),10*60*1000);
+      dropboxPdfSearchStatus(`PDF aperto direttamente alla pagina ${targetPage}.`);
     }catch(e){tab.close();dropboxPdfSearchStatus("Errore apertura PDF: "+(e.message||String(e)));}
   });
   actions.append(openBtn);
