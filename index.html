@@ -630,28 +630,28 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 }
 @media(max-width:360px){.mobile-tools-grid{grid-template-columns:minmax(0,1fr)}.mobile-tools-grid button{min-height:56px}}
 
-/* Header mobile fisso: resta visibile durante lo scorrimento e rispetta la Dynamic Island */
+/* Header mobile fisso: collocato direttamente nel body per evitare limiti di contenitori/scroll iOS */
 @media(max-width:700px){
-  .topbar{
-    position:fixed !important;
-    top:0 !important;
-    left:0 !important;
-    right:0 !important;
-    width:100% !important;
-    height:auto !important;
-    min-height:calc(60px + env(safe-area-inset-top, 0px));
-    box-sizing:border-box;
-    padding-top:calc(10px + env(safe-area-inset-top, 0px)) !important;
-    padding-bottom:10px !important;
-    padding-left:14px !important;
-    padding-right:14px !important;
-    align-items:center;
-    z-index:100 !important;
+  body>.topbar{
+    position:fixed!important;
+    top:0!important;left:0!important;right:0!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:calc(60px + env(safe-area-inset-top, 0px))!important;
+    box-sizing:border-box!important;
+    padding:calc(10px + env(safe-area-inset-top, 0px)) 14px 10px!important;
+    display:flex!important;align-items:center!important;
+    z-index:9999!important;
+    background:rgba(10,16,32,.97)!important;
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line)!important;
   }
-  main{padding-top:calc(60px + env(safe-area-inset-top, 0px)) !important;}
-  .topbar>div:first-child{min-width:0;flex:1 1 auto;}
-  .topbar .crumb{min-width:0;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .top-actions{flex:0 0 auto;}
+  body{padding-top:calc(60px + env(safe-area-inset-top, 0px))!important;}
+  main{padding-top:0!important;}
+  body>.topbar>div:first-child{min-width:0;flex:1 1 auto;}
+  body>.topbar .crumb{min-width:0;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  body>.topbar .top-actions{flex:0 0 auto;}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -712,6 +712,24 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 </aside>
 <main>
 <header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="btn mobile-menu" id="menuBtn">☰</button><div class="crumb">Railway Maintenance <span style="padding:0 7px">/</span><span id="crumbCurrent">Cerca componente</span></div></div><div class="top-actions"><div class="avatar">RM</div></div></header>
+<script>
+/* Su mobile sposta l'header fuori dai contenitori dell'app: position:fixed resta ancorato al viewport iOS. */
+(function(){
+  function placeMobileHeader(){
+    const header=document.querySelector('header.topbar');
+    if(!header)return;
+    if(window.matchMedia('(max-width:700px)').matches){
+      if(header.parentElement!==document.body) document.body.insertBefore(header,document.body.firstChild);
+    }else{
+      const main=document.querySelector('main');
+      if(main && header.parentElement===document.body) main.insertBefore(header,main.firstChild);
+    }
+  }
+  placeMobileHeader();
+  window.addEventListener('resize',placeMobileHeader,{passive:true});
+})();
+</script>
+
 <div class="content" id="content"></div>
 </main>
 </div>
