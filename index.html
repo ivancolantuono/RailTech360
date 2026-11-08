@@ -609,6 +609,27 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 .oi-multiselect-options .muted{color:#64748b!important}
 @media(max-width:700px){.oi-multifilters{grid-template-columns:1fr}.oi-multiselect-options{position:relative;top:auto;max-height:190px;border-top:1px solid #1677d2;border-radius:0 0 9px 9px}.oi-multiselect[open] summary{border-radius:9px 9px 0 0}}
 
+
+/* Menu mobile: sezioni raggruppate, pulsanti più grandi e chiusura sempre visibile */
+@media(max-width:700px){
+  .mobile-bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr));padding-left:10px;padding-right:10px;box-shadow:0 -5px 22px rgba(7,18,35,.18)}
+  .mobile-bottom-nav button{min-height:54px;font-size:10px;gap:4px}
+  .mobile-bottom-nav button .nav-emoji{font-size:20px}
+  .mobile-tools-sheet{max-height:84dvh;padding:10px 15px calc(22px + env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
+  .mobile-tools-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:0 1px}
+  .mobile-tools-kicker{font-size:9px;letter-spacing:1.5px;font-weight:800;color:#6fb8f5;margin-bottom:3px}
+  .mobile-tools-title{font-size:20px;line-height:1.2;margin:0;color:#f4f7ff}
+  .mobile-tools-close{width:38px;height:38px;flex:0 0 38px;border:1px solid #53647d;border-radius:12px;background:#1a2a42;color:#fff;font-size:17px}
+  .mobile-tools-group{margin:0 0 16px}
+  .mobile-tools-group-title{display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:0 2px;color:#c9d8ec;font-size:12px;font-weight:800;letter-spacing:.35px}
+  .mobile-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .mobile-tools-grid button{position:relative;min-height:64px;padding:10px 9px;gap:8px;border-radius:13px;font-size:12px;line-height:1.25;overflow-wrap:anywhere}
+  .mobile-tools-grid button .ico{width:32px;height:32px;border-radius:9px;font-size:17px}
+  .mobile-tools-grid button .mobile-tools-arrow{margin-left:auto;color:#8fa6c3;font-size:20px;line-height:1}
+  .mobile-tools-grid button.active{border-color:#168cff!important;box-shadow:inset 0 0 0 1px #168cff,0 3px 10px rgba(22,140,255,.12)!important}
+}
+@media(max-width:360px){.mobile-tools-grid{grid-template-columns:minmax(0,1fr)}.mobile-tools-grid button{min-height:56px}}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1203,8 +1224,22 @@ function dropboxPdfSearchResult(item){
       const blob=new Blob([buffer],{type:"application/pdf"});
       const objectUrl=URL.createObjectURL(blob);
       const targetPage=Math.max(1,Number(item.page)||1);
-      tab.location.replace(objectUrl+`#page=${targetPage}&zoom=page-fit`);
-      setTimeout(()=>URL.revokeObjectURL(objectUrl),10*60*1000);
+      const searchText=String(item.query||"").trim();
+      const viewerHtml=`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=4"><title>${String(item.name||"Documento PDF").replace(/[<>]/g,"")}</title><style>
+        *{box-sizing:border-box}body{margin:0;background:#e9edf3;color:#172337;font:14px system-ui,-apple-system,Segoe UI,sans-serif}.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;background:#13233a;color:#fff;box-shadow:0 2px 8px #0002}.bar button,.bar input{min-height:38px;border:1px solid #52647c;border-radius:8px;padding:7px 10px;background:#203752;color:#fff}.bar input{width:100px}.bar .query{flex:1;min-width:130px;width:auto;background:#fff;color:#172337;border-color:#cbd5e1}.status{font-size:12px;color:#d6e4f5}.page-wrap{position:relative;width:max-content;max-width:calc(100vw - 20px);margin:18px auto;background:#fff;box-shadow:0 4px 20px #23354b30;overflow:hidden}.page-wrap canvas{display:block;max-width:100%;height:auto}.textLayer{position:absolute;inset:0;overflow:hidden;line-height:1;transform-origin:0 0;pointer-events:none}.textLayer span{position:absolute;white-space:pre;color:transparent;transform-origin:0 0}.textLayer mark{background:#ffdf45;color:transparent;border-radius:2px;box-shadow:0 0 0 1px #e5ad00}.hint{text-align:center;padding:10px;color:#53647a;font-size:12px}.error{color:#a11;background:#fff;padding:20px;margin:20px;border-radius:10px}
+        @media(max-width:600px){.bar{gap:6px;padding:8px}.bar button{padding:6px 8px;min-height:40px}.status{width:100%;order:5}.page-wrap{margin:10px auto;max-width:calc(100vw - 12px)}}
+      </style></head><body><div class="bar"><button id="prev">‹</button><span id="pageInfo">Pagina</span><button id="next">›</button><button id="minus">−</button><button id="plus">+</button><input id="find" class="query" aria-label="Parole da evidenziare" placeholder="Cerca nel PDF"><button id="findBtn">Evidenzia</button><span id="status" class="status">Caricamento PDF…</span></div><div id="pageWrap" class="page-wrap"><canvas id="pdfCanvas"></canvas><div id="textLayer" class="textLayer"></div></div><div class="hint">Le corrispondenze della ricerca sono evidenziate in giallo. Puoi cambiare pagina e ingrandire il documento.</div>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><\/script><script>
+      (function(){const pdfUrl=${JSON.stringify(objectUrl)};let pdf=null,pageNo=${targetPage},scale=1.25,query=${JSON.stringify(searchText)};const canvas=document.getElementById('pdfCanvas'),ctx=canvas.getContext('2d'),layer=document.getElementById('textLayer'),wrap=document.getElementById('pageWrap'),status=document.getElementById('status');
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      function esc(s){return s.replace(/[.*+?^$()|[\]\\{}]/g,'\\$&')}
+      async function render(){try{status.textContent='Rendering pagina '+pageNo+'…';const page=await pdf.getPage(pageNo),vp=page.getViewport({scale});canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);canvas.style.width=vp.width+'px';canvas.style.height=vp.height+'px';wrap.style.width=vp.width+'px';wrap.style.height=vp.height+'px';layer.style.width=vp.width+'px';layer.style.height=vp.height+'px';layer.innerHTML='';await page.render({canvasContext:ctx,viewport:vp}).promise;const tc=await page.getTextContent();await pdfjsLib.renderTextLayer({textContent:tc,container:layer,viewport:vp,textDivs:[]}).promise;highlight();document.getElementById('pageInfo').textContent=pageNo+' / '+pdf.numPages;document.getElementById('prev').disabled=pageNo<=1;document.getElementById('next').disabled=pageNo>=pdf.numPages;status.textContent=query?'Ricerca evidenziata':'PDF pronto';}catch(e){status.textContent='Errore: '+e.message;}}
+      function highlight(){const terms=query.toLocaleLowerCase('it').split(/\s+/).filter(Boolean).sort((a,b)=>b.length-a.length);if(!terms.length)return;const re=new RegExp('('+terms.map(esc).join('|')+')','ig');layer.querySelectorAll('span').forEach(span=>{const raw=span.textContent||'';if(!terms.some(t=>raw.toLocaleLowerCase('it').includes(t)))return;span.innerHTML=raw.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(re,'<mark>$1</mark>');});}
+      document.getElementById('prev').onclick=()=>{if(pageNo>1){pageNo--;render()}};document.getElementById('next').onclick=()=>{if(pageNo<pdf.numPages){pageNo++;render()}};document.getElementById('minus').onclick=()=>{scale=Math.max(.55,scale-.15);render()};document.getElementById('plus').onclick=()=>{scale=Math.min(3,scale+.15);render()};document.getElementById('find').value=query;document.getElementById('findBtn').onclick=()=>{query=document.getElementById('find').value.trim();render()};document.getElementById('find').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('findBtn').click()});pdfjsLib.getDocument(pdfUrl).promise.then(x=>{pdf=x;render()}).catch(e=>{document.body.innerHTML='<div class="error">Impossibile aprire il PDF: '+e.message+'</div>'});})();
+      <\/script></body></html>`;
+      const viewerUrl=URL.createObjectURL(new Blob([viewerHtml],{type:"text/html"}));
+      tab.location.replace(viewerUrl);
+      setTimeout(()=>{URL.revokeObjectURL(objectUrl);URL.revokeObjectURL(viewerUrl)},30*60*1000);
       dropboxPdfSearchStatus(`PDF aperto direttamente alla pagina ${targetPage}.`);
     }catch(e){tab.close();dropboxPdfSearchStatus("Errore apertura PDF: "+(e.message||String(e)));}
   });
@@ -1292,7 +1327,7 @@ async function runDropboxPdfSearch(){
           const text=content.items.map(x=>x.str||"").join(" ").replace(/\s+/g," ");const normalized=text.toLocaleLowerCase("it");
           if(terms.every(term=>normalized.includes(term))){
             const first=terms.map(t=>normalized.indexOf(t)).sort((a,b)=>a-b)[0];const start=Math.max(0,first-100);const excerpt=(text.slice(start,Math.min(text.length,start+280))||"Testo trovato").trim();
-            dropboxPdfSearchResult({name:file.name,path:file.path,page:pageNo,matches:terms.reduce((n,t)=>n+(normalized.split(t).length-1),0),excerpt:"…"+excerpt+"…"});fileMatches++;found++;
+            dropboxPdfSearchResult({name:file.name,path:file.path,page:pageNo,query, matches:terms.reduce((n,t)=>n+(normalized.split(t).length-1),0),excerpt:"…"+excerpt+"…"});fileMatches++;found++;
           }
         }
         if(!pdf.numPages)skipped++;
@@ -1755,20 +1790,38 @@ document.addEventListener("change",function(e){
     {page:'cercaComponente',label:'Cerca',icon:'⌕'},
     {page:'openitem',label:'Open Item',icon:'⚠'},
     {page:'sensori',label:'Sensori',icon:'⌁'},
-    {page:'__more',label:'Altro',icon:'☰'}
+    {page:'__more',label:'Menu',icon:'☰'}
   ];
   const bar=document.createElement('nav');bar.className='mobile-bottom-nav';bar.id='mobileBottomNav';bar.setAttribute('aria-label','Navigazione principale mobile');
   shortcuts.forEach(item=>{const b=document.createElement('button');b.type='button';b.dataset.page=item.page;b.innerHTML=`<span class="nav-emoji" aria-hidden="true">${item.icon}</span><span>${item.label}</span>`;b.addEventListener('click',()=>{if(item.page==='__more'){openTools();return}go(item.page);closeTools();updateActive()});bar.appendChild(b)});
   document.body.appendChild(bar);
   const backdrop=document.createElement('div');backdrop.className='mobile-tools-backdrop';backdrop.id='mobileToolsBackdrop';backdrop.addEventListener('click',closeTools);document.body.appendChild(backdrop);
-  const sheet=document.createElement('section');sheet.className='mobile-tools-sheet';sheet.id='mobileToolsSheet';sheet.setAttribute('aria-label','Altre sezioni');
-  sheet.innerHTML='<div class="mobile-tools-grabber"></div><h2 class="mobile-tools-title">Tutti gli strumenti</h2><div class="mobile-tools-grid" id="mobileToolsGrid"></div>';
+  const sheet=document.createElement('section');sheet.className='mobile-tools-sheet';sheet.id='mobileToolsSheet';sheet.setAttribute('aria-label','Menu di navigazione');sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');
+  sheet.innerHTML='<div class="mobile-tools-grabber"></div><div class="mobile-tools-heading"><div><div class="mobile-tools-kicker">RAILWAY MAINTENANCE</div><h2 class="mobile-tools-title">Tutte le sezioni</h2></div><button type="button" class="mobile-tools-close" aria-label="Chiudi menu">✕</button></div><div id="mobileToolsGroups"></div>';
   document.body.appendChild(sheet);
-  const grid=sheet.querySelector('#mobileToolsGrid');
-  all.forEach(item=>{const b=document.createElement('button');b.type='button';b.dataset.page=item.page;b.innerHTML=`<span class="ico" aria-hidden="true">${item.icon}</span><span>${item.label}</span>`;b.addEventListener('click',()=>{go(item.page);closeTools();updateActive()});grid.appendChild(b)});
-  function openTools(){backdrop.classList.add('open');sheet.classList.add('open');document.body.style.overflow='hidden';}
+  sheet.querySelector('.mobile-tools-close').addEventListener('click',closeTools);
+  const groups=[
+    {title:'Magazzino',icon:'📦',pages:['cercaComponente','catalogoRicambi']},
+    {title:'Scadenze',icon:'📅',pages:['archivioScadenze','ricercaPdf']},
+    {title:'Open Item',icon:'⚠️',pages:['openitem']},
+    {title:'Diagnostica',icon:'🛠️',pages:['fde','ccm','mcm','lcm','sensori']}
+  ];
+  const groupHost=sheet.querySelector('#mobileToolsGroups');
+  groups.forEach(group=>{
+    const section=document.createElement('section');section.className='mobile-tools-group';
+    const heading=document.createElement('h3');heading.className='mobile-tools-group-title';heading.innerHTML=`<span>${group.icon}</span><span>${group.title}</span>`;
+    const grid=document.createElement('div');grid.className='mobile-tools-grid';
+    group.pages.forEach(page=>{
+      const item=all.find(x=>x.page===page);if(!item)return;
+      const b=document.createElement('button');b.type='button';b.dataset.page=item.page;
+      b.innerHTML=`<span class="ico" aria-hidden="true">${item.icon}</span><span>${item.label}</span><span class="mobile-tools-arrow" aria-hidden="true">›</span>`;
+      b.addEventListener('click',()=>{go(item.page);closeTools();updateActive()});grid.appendChild(b);
+    });
+    section.append(heading,grid);groupHost.appendChild(section);
+  });
+  function openTools(){backdrop.classList.add('open');sheet.classList.add('open');document.body.style.overflow='hidden';sheet.querySelector('.mobile-tools-close')?.focus();}
   function closeTools(){backdrop.classList.remove('open');sheet.classList.remove('open');document.body.style.overflow='';}
-  function updateActive(){const page=window.currentPage||document.querySelector('#nav button.active')?.dataset.page;bar.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===page||(b.dataset.page==='__more'&&all.some(x=>x.page===page&& !['cercaComponente','openitem','sensori'].includes(page)))));grid.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));}
+  function updateActive(){const page=window.currentPage||document.querySelector('#nav button.active')?.dataset.page;bar.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.page===page||(b.dataset.page==='__more'&&all.some(x=>x.page===page&&!['cercaComponente','openitem','sensori'].includes(page)))));sheet.querySelectorAll('.mobile-tools-grid button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));}
   const originalGo=window.go;
   if(typeof originalGo==='function')window.go=function(page){originalGo(page);updateActive()};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTools()});
