@@ -653,6 +653,24 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
   body>.topbar .crumb{min-width:0;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   body>.topbar .top-actions{flex:0 0 auto;}
 }
+
+/* Presenza operatori online */
+.top-actions{position:relative}
+.presence-wrap{position:relative;display:flex;align-items:center}
+.presence-toggle{position:relative;width:36px;height:36px;border:1px solid #cbd7e5;border-radius:11px;background:#fff;color:#31506f;display:grid;place-items:center;cursor:pointer;padding:7px}
+.presence-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.presence-count{position:absolute;right:-6px;top:-6px;min-width:17px;height:17px;padding:0 4px;border-radius:10px;background:#13845b;color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid #fff}
+.presence-popover{position:absolute;right:0;top:calc(100% + 12px);width:min(300px,calc(100vw - 28px));max-height:min(420px,65vh);overflow:auto;background:#fff;border:1px solid #d7e0ec;border-radius:14px;box-shadow:0 14px 40px rgba(24,45,72,.2);z-index:10010;color:#172337}
+.presence-popover[hidden]{display:none!important}
+.presence-popover-head{padding:13px 15px;border-bottom:1px solid #e5ebf2;display:flex;flex-direction:column;gap:3px}
+.presence-popover-head strong{font-size:13px}.presence-popover-head span{font-size:11px;color:#607086}
+.presence-list{padding:6px 10px}
+.presence-person{display:flex;align-items:center;gap:10px;padding:9px 5px;border-bottom:1px solid #eef2f7}
+.presence-person:last-child{border-bottom:0}
+.presence-initials{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:#e5f2ff;color:#145fa8;font-size:11px;font-weight:800}
+.presence-person-name{font-size:12px;font-weight:700;min-width:0;overflow-wrap:anywhere}.presence-person-state{margin-left:auto;display:flex;align-items:center;gap:5px;color:#13845b;font-size:10px;white-space:nowrap}
+.presence-dot{width:7px;height:7px;border-radius:50%;background:#16a36a}.presence-empty{padding:16px 8px;text-align:center;color:#607086;font-size:12px}
+@media(max-width:700px){.presence-toggle{width:34px;height:34px;padding:6px}.presence-popover{position:fixed;top:calc(70px + env(safe-area-inset-top,0px));right:12px;max-height:60vh}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -711,7 +729,19 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 
 </aside>
 <main>
-<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="btn mobile-menu" id="menuBtn">☰</button><div class="crumb">Railway Maintenance <span style="padding:0 7px">/</span><span id="crumbCurrent">Cerca componente</span></div></div><div class="top-actions"><div class="avatar">RM</div></div></header>
+<header class="topbar"><div style="display:flex;align-items:center;gap:12px"><button class="btn mobile-menu" id="menuBtn">☰</button><div class="crumb">Railway Maintenance <span style="padding:0 7px">/</span><span id="crumbCurrent">Cerca componente</span></div></div><div class="top-actions">
+  <div class="presence-wrap" id="presenceWrap">
+    <button class="presence-toggle" id="presenceToggle" type="button" aria-label="Visualizza operatori online" aria-expanded="false" title="Operatori online">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6m3-3h-6"/></svg>
+      <span class="presence-count" id="presenceCount">0</span>
+    </button>
+    <div class="presence-popover" id="presencePopover" hidden>
+      <div class="presence-popover-head"><strong>Operatori online</strong><span id="presenceSummary">Connessione in corso…</span></div>
+      <div class="presence-list" id="presenceList"><div class="presence-empty">Caricamento operatori…</div></div>
+    </div>
+  </div>
+  <div class="avatar">RM</div>
+</div></header>
 <script>
 /* Su mobile sposta l'header fuori dai contenitori dell'app: position:fixed resta ancorato al viewport iOS. */
 (function(){
@@ -1747,11 +1777,60 @@ function showAuthMode(mode,message=""){
 }
 function showAuthOverlay(){const el=document.getElementById("authOverlay");if(el)el.style.display="flex"}
 function hideAuthOverlay(){const el=document.getElementById("authOverlay");if(el)el.style.display="none"}
+// PRESENZA OPERATORI: Supabase Realtime Presence, senza tabella aggiuntiva.
+let operatorPresenceChannel = null;
+let operatorPresenceUserId = null;
+let operatorPresenceHeartbeatTimer = null;
+function renderOperatorPresence(){
+  const list=document.getElementById("presenceList"),count=document.getElementById("presenceCount"),summary=document.getElementById("presenceSummary");
+  if(!list||!count||!summary)return;
+  const raw=operatorPresenceChannel?.presenceState?.()||{};
+  const unique=new Map();
+  Object.values(raw).flat().forEach(p=>{if(p?.user_id&&!unique.has(p.user_id))unique.set(p.user_id,p)});
+  const people=[...unique.values()].sort((a,b)=>(a.full_name||"").localeCompare(b.full_name||"","it"));
+  count.textContent=String(people.length);summary.textContent=people.length===1?"1 operatore collegato":people.length+" operatori collegati";
+  if(!people.length){list.innerHTML='<div class="presence-empty">Nessun altro operatore online al momento.</div>';return;}
+  list.innerHTML=people.map(p=>{const name=String(p.full_name||"Operatore");const initials=name.trim().split(/\s+/).slice(0,2).map(x=>x[0]||"").join("").toUpperCase()||"OP";return `<div class="presence-person"><div class="presence-initials">${escapeHtml(initials)}</div><div class="presence-person-name">${escapeHtml(name)}</div><div class="presence-person-state"><span class="presence-dot"></span>Online</div></div>`}).join("");
+}
+async function stopOperatorPresence(){
+  if(operatorPresenceHeartbeatTimer){clearInterval(operatorPresenceHeartbeatTimer);operatorPresenceHeartbeatTimer=null;}
+  const old=operatorPresenceChannel;operatorPresenceChannel=null;operatorPresenceUserId=null;
+  if(old){try{await old.untrack();}catch(_){}try{await getAuthClient().removeChannel(old);}catch(_){}}
+  renderOperatorPresence();
+}
+async function startOperatorPresence(session){
+  const user=session?.user;if(!user?.id)return;
+  if(operatorPresenceChannel&&operatorPresenceUserId===user.id)return;
+  await stopOperatorPresence();
+  const client=getAuthClient();operatorPresenceUserId=user.id;
+  const fullName=String(user.user_metadata?.full_name||user.email?.split("@")[0]||"Operatore").trim().slice(0,100);
+  const channel=client.channel("railway-maintenance-presence",{config:{presence:{key:user.id}}});
+  operatorPresenceChannel=channel;
+  channel.on("presence",{event:"sync"},renderOperatorPresence);
+  channel.on("presence",{event:"join"},renderOperatorPresence);
+  channel.on("presence",{event:"leave"},renderOperatorPresence);
+  channel.subscribe(async status=>{
+    if(status==="SUBSCRIBED"){
+      try{await channel.track({user_id:user.id,full_name:fullName,online_at:new Date().toISOString()});renderOperatorPresence();}
+      catch(err){console.warn("Presenza operatori non disponibile:",err);const summary=document.getElementById("presenceSummary");if(summary)summary.textContent="Presenza non disponibile";}
+    }else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){
+      const summary=document.getElementById("presenceSummary");if(summary)summary.textContent="Connessione non disponibile";
+    }
+  });
+}
+(function setupPresencePanel(){
+  const toggle=document.getElementById("presenceToggle"),panel=document.getElementById("presencePopover");if(!toggle||!panel)return;
+  toggle.addEventListener("click",()=>{const open=panel.hidden;panel.hidden=!open;toggle.setAttribute("aria-expanded",String(open));});
+  document.addEventListener("click",e=>{const wrap=document.getElementById("presenceWrap");if(wrap&&!wrap.contains(e.target)){panel.hidden=true;toggle.setAttribute("aria-expanded","false");}});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"){panel.hidden=true;toggle.setAttribute("aria-expanded","false");}});
+})();
+
 async function finishAuthGate(session){
   if(!session?.user){showAuthMode("login");showAuthOverlay();return}
   // Il link di recupero deve consentire di impostare la nuova password prima di entrare nell'app.
   if(authRecoverySession){showAuthMode("updatePassword");showAuthOverlay();return}
   hideAuthOverlay();
+  startOperatorPresence(session).catch(err=>console.warn("Avvio presenza operatori non riuscito:",err));
   const user=session.user;
   const label=user.user_metadata?.full_name||user.email||"Operatore";
   const avatar=document.querySelector(".top-actions .avatar");
@@ -1793,7 +1872,7 @@ document.getElementById("authForm").addEventListener("submit",async e=>{
     const client=getAuthClient();
     client.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY"){authRecoverySession=true;showAuthMode("updatePassword");showAuthOverlay();return}
-      if(event==="SIGNED_OUT"){authRecoverySession=false;showAuthMode("login");showAuthOverlay();return}
+      if(event==="SIGNED_OUT"){stopOperatorPresence();authRecoverySession=false;showAuthMode("login");showAuthOverlay();return}
       if(event==="SIGNED_IN"&&session&&!authRecoverySession){hideAuthOverlay();}
     });
     const {data,error}=await client.auth.getSession();if(error)throw error;
