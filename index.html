@@ -674,7 +674,7 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
 
@@ -1050,7 +1050,7 @@ function openMaterialRequestForm(){
   const records=selectedMaterialRecords();if(!records.length){toast("Seleziona almeno un componente.");return;}
   const host=document.getElementById("materialRequestHost");if(!host)return;
   host.innerHTML=`<section class="card" style="margin-top:18px;border-color:#3b6594"><div class="card-head"><h2>Nuova richiesta materiali</h2><button class="btn" onclick="closeMaterialRequestForm()">Chiudi</button></div>
-  <p class="muted tiny">Compila i dati generali e la quantità per ogni componente selezionato. Il file Excel sarà generato senza eseguire macro.</p>
+  <p class="muted tiny">Compila i dati generali e la quantità per ogni componente selezionato (massimo 4 componenti per richiesta, secondo le righe già presenti nel modello). Il file Excel sarà generato senza eseguire macro.</p>
   <div class="form-grid">
    <div class="field"><label>Numero treno</label><input id="mrTrain" placeholder="Es. 29" required></div>
    <div class="field"><label>ODL</label><input id="mrOdl" placeholder="Numero ODL"></div>
@@ -1071,65 +1071,83 @@ function openMaterialRequestForm(){
   host.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function closeMaterialRequestForm(){const h=document.getElementById("materialRequestHost");if(h)h.innerHTML=""}
-function excelCellValue(ws,addr){return ws.getCell(addr).value}
 function safeFilePart(v){return String(v||"").trim().replace(/[^a-z0-9_-]+/gi,"_").replace(/^_+|_+$/g,"")}
 function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 function bytesToBase64(bytes){let binary="";const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));return btoa(binary)}
+const XLSX_MAIN_NS="http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+function parseXlsxXml(text){const doc=new DOMParser().parseFromString(text,"application/xml");if(doc.getElementsByTagName("parsererror").length)throw new Error("Il modello Excel contiene XML non valido.");return doc}
+function xlsxCell(doc,rowNumber,address){
+ const rows=doc.getElementsByTagNameNS(XLSX_MAIN_NS,"row");let row=null;
+ for(const candidate of rows)if(candidate.getAttribute("r")===String(rowNumber)){row=candidate;break;}
+ if(!row)throw new Error(`Nel modello manca la riga ${rowNumber}.`);
+ for(const cell of row.getElementsByTagNameNS(XLSX_MAIN_NS,"c"))if(cell.getAttribute("r")===address)return cell;
+ const match=address.match(/^([A-Z]+)(\d+)$/);if(!match)throw new Error("Riferimento cella non valido: "+address);
+ const cell=doc.createElementNS(XLSX_MAIN_NS,"c");cell.setAttribute("r",address);
+ // Recupera lo stile della stessa colonna dalla riga modello 7, se disponibile.
+ if(rowNumber>=7){const templateRows=doc.getElementsByTagNameNS(XLSX_MAIN_NS,"row");for(const tr of templateRows){if(tr.getAttribute("r")==="7"){for(const tc of tr.getElementsByTagNameNS(XLSX_MAIN_NS,"c")){if(tc.getAttribute("r")===match[1]+"7"&&tc.hasAttribute("s"))cell.setAttribute("s",tc.getAttribute("s"));}break;}}}
+ const cells=Array.from(row.getElementsByTagNameNS(XLSX_MAIN_NS,"c"));let inserted=false;
+ for(const existing of cells){const m=existing.getAttribute("r").match(/^([A-Z]+)\d+$/);if(m&&m[1].localeCompare(match[1])>0){row.insertBefore(cell,existing);inserted=true;break;}}
+ if(!inserted)row.appendChild(cell);return cell;
+}
+function setXlsxCell(doc,row,address,value){
+ const cell=xlsxCell(doc,row,address);while(cell.firstChild)cell.removeChild(cell.firstChild);cell.removeAttribute("t");
+ if(value===null||value===undefined||value===""){cell.setAttribute("t","inlineStr");const is=doc.createElementNS(XLSX_MAIN_NS,"is"),t=doc.createElementNS(XLSX_MAIN_NS,"t");t.setAttribute("xml:space","preserve");is.appendChild(t);cell.appendChild(is);return;}
+ if(typeof value==="number"&&Number.isFinite(value)){const v=doc.createElementNS(XLSX_MAIN_NS,"v");v.textContent=String(value);cell.appendChild(v);return;}
+ cell.setAttribute("t","inlineStr");const is=doc.createElementNS(XLSX_MAIN_NS,"is"),t=doc.createElementNS(XLSX_MAIN_NS,"t");t.setAttribute("xml:space","preserve");t.textContent=String(value);is.appendChild(t);cell.appendChild(is);
+}
+function getXlsxCellText(doc,address){const cell=doc.getElementsByTagNameNS(XLSX_MAIN_NS,"c");for(const c of cell)if(c.getAttribute("r")===address){const t=c.getElementsByTagNameNS(XLSX_MAIN_NS,"t");return t.length?t[0].textContent:"";}return ""}
+function serializeXlsxXml(doc){return new XMLSerializer().serializeToString(doc)}
 async function generateMaterialRequest(){
  const msg=document.getElementById("materialRequestMessage");
  try{
-  if(!window.ExcelJS)throw new Error("Libreria Excel non disponibile. Verifica la connessione Internet.");
+  if(!window.JSZip)throw new Error("Libreria JSZip non disponibile. Verifica la connessione Internet e ricarica la pagina.");
   const records=selectedMaterialRecords();if(!records.length)throw new Error("Non ci sono componenti selezionati.");
+  // Il modello dispone di quattro righe materiale già formattate. Non alteriamo righe,
+  // disegni, immagini, pulsanti, relazioni o ancore del foglio: per ora limitiamo a 4 voci.
+  if(records.length>4)throw new Error("Il modello originale contiene quattro righe materiale già predisposte. Seleziona al massimo 4 componenti per questa prima versione.");
   const val=id=>document.getElementById(id)?.value?.trim()||"";
   const items=records.map((r,i)=>({r,qty:Number(val("mrQty"+i)),um:val("mrUm"+i)||"pz."}));
   if(items.some(x=>!Number.isFinite(x.qty)||x.qty<=0))throw new Error("Inserisci una quantità valida per ogni componente.");
   const response=await fetch("RICHIESTA MATERIALE.xlsx",{cache:"no-store"});
   if(!response.ok)throw new Error("Modello Excel non trovato. Carica RICHIESTA MATERIALE.xlsx nella stessa cartella di index.html su GitHub Pages.");
-  const buffer=await response.arrayBuffer(),wb=new ExcelJS.Workbook();await wb.xlsx.load(buffer);
-  const ws=wb.getWorksheet("RICHIESTA MATERIALE");if(!ws)throw new Error("Nel modello manca il foglio RICHIESTA MATERIALE.");
-  const now=new Date(),dateText=now.toLocaleDateString("it-IT"),timeText=now.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
-  ws.getCell("F3").value=dateText;ws.getCell("I3").value=val("mrOdl");ws.getCell("L3").value=val("mrSite");ws.getCell("I4").value=val("mrTrain");
-  // Se servono più di quattro componenti, inserisce righe prima della riga END
-  // e sposta anche le celle unite della sezione note/consegna.
-  const extraRows=Math.max(0,items.length-4);
-  if(extraRows){
-    const merges=(ws.model.merges||[]).filter(ref=>{const m=String(ref).match(/^[A-Z]+(\d+):[A-Z]+(\d+)$/);return m&&Number(m[1])>=11;});
-    merges.forEach(ref=>ws.unMergeCells(ref));
-    ws.spliceRows(11,0,...Array.from({length:extraRows},()=>[]));
-    merges.forEach(ref=>{const m=String(ref).match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);if(m)ws.mergeCells(`${m[1]}${Number(m[2])+extraRows}:${m[3]}${Number(m[4])+extraRows}`);});
+  const zip=await JSZip.loadAsync(await response.arrayBuffer());
+  const sheetPath="xl/worksheets/sheet2.xml",mailPath="xl/worksheets/sheet1.xml";
+  if(!zip.file(sheetPath)||!zip.file(mailPath))throw new Error("Nel modello non sono presenti i fogli MAIL e RICHIESTA MATERIALE attesi.");
+  const sheetDoc=parseXlsxXml(await zip.file(sheetPath).async("text"));
+  const mailDoc=parseXlsxXml(await zip.file(mailPath).async("text"));
+  const now=new Date(),dateSerial=(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())/86400000)+25569;
+  const timeSerial=(now.getHours()*3600+now.getMinutes()*60+now.getSeconds())/86400;
+  setXlsxCell(sheetDoc,3,"F3",dateSerial);setXlsxCell(sheetDoc,3,"I3",val("mrOdl"));setXlsxCell(sheetDoc,3,"L3",val("mrSite"));setXlsxCell(sheetDoc,4,"I4",val("mrTrain"));
+  // Aggiorna soltanto il contenuto delle celle delle quattro righe già presenti.
+  for(let row=7;row<=10;row++){
+   const item=items[row-7];
+   if(!item){for(const col of "ABCDEFGHIJKLMNOPQRSTUV")setXlsxCell(sheetDoc,row,col+row,"");continue;}
+   const r=item.r,pn=r.Part_Number||r.Pn_Ricambio||r.PnRicambio2||r.Pn_CS2||"";
+   const vals={A:item===undefined?"":row-6,B:val("mrNotice")||"ND",C:val("mrType"),D:val("mrType"),E:val("mrWbs"),F:val("mrCassa"),G:dateSerial,H:timeSerial,I:val("mrReason"),J:pn,L:r.Descrizione_TI||r.COMPONENTE||"",M:item.um,N:item.qty,R:pn,T:item.um,U:item.qty};
+   for(const [col,value] of Object.entries(vals))setXlsxCell(sheetDoc,row,col+row,value);
   }
-  // Pulisce esclusivamente l'area delle righe materiali, preservando note e impaginazione.
-  const lastMaterialRow=6+items.length;
-  for(let row=7;row<=Math.max(10,lastMaterialRow);row++){
-    if(row>7){const source=ws.getRow(7),target=ws.getRow(row);source.eachCell({includeEmpty:true},(cell,col)=>{const c=target.getCell(col);c.style=JSON.parse(JSON.stringify(cell.style||{}));c.numFmt=cell.numFmt;c.alignment=cell.alignment?JSON.parse(JSON.stringify(cell.alignment)):undefined;});target.height=source.height;}
-    for(let col=1;col<=26;col++){const c=ws.getRow(row).getCell(col);if(!c.isMerged)c.value=null;}
-  }
-  items.forEach((it,i)=>{
-    const row=ws.getRow(7+i),r=it.r;
-    row.getCell(1).value=i+1;row.getCell(2).value=val("mrNotice")||"ND";row.getCell(3).value=val("mrType");row.getCell(4).value=val("mrType");row.getCell(5).value=val("mrWbs");row.getCell(6).value=val("mrCassa");row.getCell(7).value=dateText;row.getCell(8).value=timeText;row.getCell(9).value=val("mrReason");
-    const pn=r.Part_Number||r.Pn_Ricambio||r.PnRicambio2||r.Pn_CS2||"";
-    row.getCell(10).value=pn;row.getCell(12).value=r.Descrizione_TI||r.COMPONENTE||"";row.getCell(13).value=it.um;row.getCell(14).value=it.qty;row.getCell(18).value=pn;row.getCell(20).value=it.um;row.getCell(21).value=it.qty;
-  });
-  const endRow=7+items.length;ws.getCell("A"+(endRow)).value="END";
-  ws.getCell(`C${13+extraRows}`).value="INSERIRE IL LUOGO DI CONSEGNA ED IL RIFERIMENTO DELLA PERSONA PREPOSTA AL RITIRO DEL MATERIALE";
-  ws.getCell(`C${14+extraRows}`).value=[val("mrDelivery"),val("mrContact")].filter(Boolean).join(" - ");
-  const out=await wb.xlsx.writeBuffer();const blob=new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  // La riga END originale resta nella sua posizione (riga 11), senza spostare il layout.
+  setXlsxCell(sheetDoc,11,"A11","END");
+  setXlsxCell(sheetDoc,13,"C13","INSERIRE IL LUOGO DI CONSEGNA ED IL RIFERIMENTO DELLA PERSONA PREPOSTA AL RITIRO DEL MATERIALE");
+  setXlsxCell(sheetDoc,14,"C14",[val("mrDelivery"),val("mrContact")].filter(Boolean).join(" - "));
+  zip.file(sheetPath,serializeXlsxXml(sheetDoc));
+  const out=await zip.generateAsync({type:"uint8array",compression:"DEFLATE",compressionOptions:{level:6}});
   const filename=`Richiesta_materiale_Treno_${safeFilePart(val("mrTrain"))}_ODL_${safeFilePart(val("mrOdl"))}.xlsx`;
-  downloadBlob(blob,filename);
-  // Prepara un messaggio .eml con l'Excel allegato; l'utente verifica e invia da Outlook.
-  const mailWs=wb.getWorksheet("MAIL");
-  const recipients=String(mailWs?.getCell("D5").text||"").replace(/[>;]+/g,",").split(/[\s,]+/).filter(x=>/^[^@\s;]+@[^@\s;]+\.[^@\s;]+$/.test(x)).join("; ");
+  const excelBlob=new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  downloadBlob(excelBlob,filename);
+  // I destinatari e il testo vengono letti dal foglio MAIL originale; nessuna macro viene avviata.
+  const rawRecipients=getXlsxCellText(mailDoc,"D5");
+  const recipients=rawRecipients.replace(/[>;]+/g,";").split(/[\s;,]+/).filter(x=>/^[^@\s;]+@[^@\s;]+\.[^@\s;]+$/.test(x)).join(", ");
   const dateStamp=now.toLocaleDateString("it-IT").replaceAll("/","");
   const subject=`RICHIESTA MATERIALE NA TS-${val("mrTrain")} ODL${val("mrOdl")} ${dateStamp}`;
-  const body=String(mailWs?.getCell("D9").text||"LA RICHIESTA IN OGGETTO È IN LAVORAZIONE")+`\r\n\r\nLuogo di consegna: ${val("mrDelivery")}\r\nRiferimento: ${val("mrContact")}`;
-  const bytes=new Uint8Array(out),b64=bytesToBase64(bytes),boundary="----=_RailTech360_"+Date.now();
+  const body=(getXlsxCellText(mailDoc,"D9")||"LA RICHIESTA IN OGGETTO È IN LAVORAZIONE")+`\r\n\r\nLuogo di consegna: ${val("mrDelivery")}\r\nRiferimento: ${val("mrContact")}`;
+  const b64=bytesToBase64(out),boundary="----=_RailTech360_"+Date.now();
   const eml=[`To: ${recipients}`,`Subject: ${subject}`,`MIME-Version: 1.0`,`Content-Type: multipart/mixed; boundary="${boundary}"`,``,`--${boundary}`,`Content-Type: text/plain; charset="UTF-8"`,`Content-Transfer-Encoding: 8bit`,``,body,``,`--${boundary}`,`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="${filename}"`,`Content-Transfer-Encoding: base64`,`Content-Disposition: attachment; filename="${filename}"`,``,b64.match(/.{1,76}/g).join("\r\n"),``,`--${boundary}--`,` `].join("\r\n");
   downloadBlob(new Blob(["\ufeff"+eml],{type:"message/rfc822;charset=utf-8"}),filename.replace(/\.xlsx$/,".eml"));
-  if(msg)msg.textContent="File Excel e bozza email .eml generati. Apri il file .eml con Outlook, controlla destinatari e allegato, quindi invia manualmente.";
+  if(msg)msg.textContent="File Excel e bozza email .eml generati. Il modello è stato aggiornato senza ricostruire i fogli: immagini, pulsanti e ancore originali sono conservati. Apri il file .eml con Outlook, controlla destinatari e allegato, quindi invia manualmente.";
   toast("Richiesta Excel e bozza email pronti.");
  }catch(err){if(msg)msg.textContent=err.message||String(err);else toast(err.message||String(err));}
 }
-
 const COMPONENT_FIELDS=[
   ["ELEMENTO","Elemento"],["ASSIEME","Assieme"],["COMPONENTE","Componente"],
   ["Part_Number","Part number"],["Pn_Ricambio","PN ricambio"],["PnRicambio2","PN ricambio 2"],
