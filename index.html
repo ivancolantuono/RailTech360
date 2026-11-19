@@ -674,6 +674,7 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -913,7 +914,9 @@ function cercaComponentePage(){
       <div class="toolbar"><button class="btn primary" onclick="requestAddComponentAccess()">＋ Aggiungi componente</button><button class="btn" id="editComponentBtn" onclick="editSelectedComponent()" disabled>✎ Modifica componente selezionato</button><button class="btn" id="deleteComponentBtn" onclick="deleteSelectedComponent()" disabled style="border-color:#70404a;color:#d88a96;background:#2b2028">🗑 Elimina componente selezionato</button><span class="muted tiny" style="align-self:center">Seleziona una riga per modificarla o eliminarla.</span></div>
       <div id="componentMessage" class="muted" style="padding:16px 0">Inserisci un termine e premi Cerca. Il filtro ASSIEME mostrerà solo gli assiemi presenti nei risultati della ricerca.</div>
       <div id="componentResults" class="component-results"></div>
+      <div class="toolbar" style="margin-top:14px"><button class="btn primary" id="createMaterialRequestBtn" onclick="openMaterialRequestForm()" disabled>＋ Crea richiesta materiali (<span id="materialSelectionCount">0</span>)</button><span class="muted tiny" style="align-self:center">Seleziona più componenti tramite la prima colonna della tabella.</span></div>
       <div id="componentFormHost"></div>
+      <div id="materialRequestHost"></div>
     </section>`;
 }
 function getSupabaseConfig(){
@@ -954,6 +957,7 @@ async function searchComponents(){
   const assiemeFilter=document.getElementById("componentAssiemeFilter");
   const selectedAssieme=assiemeFilter?.value||"";
   out.innerHTML="";
+  window.materialRequestSelection=new Set();updateMaterialRequestButton();
   if(!q&&!selectedAssieme){msg.textContent="Inserisci un termine di ricerca oppure seleziona un assieme.";return}
   const cfg=getSupabaseConfig();
   if(!cfg.url||!cfg.key){msg.innerHTML='Database non configurato. Premi <b>Configura database</b> per inserire Project URL e chiave pubblica.';return}
@@ -995,8 +999,10 @@ async function searchComponents(){
     if(!matches.length){msg.textContent="Nessun componente trovato con i filtri selezionati.";return}
     msg.textContent=`Trovati ${matches.length} componenti. Sono visualizzati tutti i risultati corrispondenti; scorri la tabella per consultarli.`;
     window.componentSearchResults=matches;
-    out.innerHTML=table(["Seleziona","ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_CS2","IDRA TI","Descrizione_TI"],matches.map((r,i)=>`<tr>
-      <td><input type="radio" name="selectedComponent" value="${i}" aria-label="Seleziona componente" onchange="updateEditComponentButton()"></td>
+    window.materialRequestSelection=window.materialRequestSelection||new Set();
+    out.innerHTML=table(["Richiesta","Modifica","ELEMENTO","ASSIEME","COMPONENTE","Part_Number","Pn_Ricambio","PnRicambio2","Pn_CS2","IDRA TI","Descrizione_TI"],matches.map((r,i)=>`<tr>
+      <td><input type="checkbox" class="material-request-check" value="${i}" aria-label="Aggiungi alla richiesta" onchange="toggleMaterialRequestSelection(${i},this.checked)"></td>
+      <td><input type="radio" name="selectedComponent" value="${i}" aria-label="Seleziona per modifica" onchange="updateEditComponentButton()"></td>
       <td>${escapeHtml(r["ELEMENTO"]||"—")}</td>
       <td>${escapeHtml(r["ASSIEME"]||"—")}</td>
       <td style="white-space:normal;min-width:180px">${escapeHtml(r["COMPONENTE"]||"—")}</td>
@@ -1006,6 +1012,8 @@ async function searchComponents(){
       <td>${escapeHtml(r["Pn_CS2"]||"—")}</td>
       <td>${escapeHtml(r["IDRA TI"]||"—")}</td>
       <td style="white-space:normal;min-width:220px;max-width:360px">${escapeHtml(r["Descrizione_TI"]||"—")}</td></tr>`).join(""));
+    out.querySelectorAll(".material-request-check").forEach(cb=>{cb.checked=window.materialRequestSelection.has(Number(cb.value))});
+    updateMaterialRequestButton();
     const componentTableWrap=out.querySelector(".table-wrap");
     if(componentTableWrap){
       componentTableWrap.style.maxHeight="520px";
@@ -1021,6 +1029,105 @@ async function searchComponents(){
   }catch(err){
     msg.innerHTML=`<b>Errore durante la ricerca.</b><br>${escapeHtml(err.message||String(err))}<br><span class="tiny">Controlla URL, chiave pubblica, nomi delle colonne e policy SELECT (RLS) su magazzino.</span>`;
   }finally{const b=document.getElementById("componentSearchBtn");if(b)b.disabled=false}
+}
+
+// --- Richiesta materiali: selezione multipla, Excel e bozza Outlook (senza macro) ---
+window.materialRequestSelection=window.materialRequestSelection||new Set();
+function toggleMaterialRequestSelection(index,checked){
+  if(checked)window.materialRequestSelection.add(Number(index));else window.materialRequestSelection.delete(Number(index));
+  updateMaterialRequestButton();
+}
+function updateMaterialRequestButton(){
+  const n=window.materialRequestSelection?.size||0;
+  const b=document.getElementById("createMaterialRequestBtn"),c=document.getElementById("materialSelectionCount");
+  if(b)b.disabled=n===0;if(c)c.textContent=String(n);
+}
+function selectedMaterialRecords(){
+  const rows=window.componentSearchResults||[];
+  return Array.from(window.materialRequestSelection||[]).map(i=>rows[i]).filter(Boolean);
+}
+function openMaterialRequestForm(){
+  const records=selectedMaterialRecords();if(!records.length){toast("Seleziona almeno un componente.");return;}
+  const host=document.getElementById("materialRequestHost");if(!host)return;
+  host.innerHTML=`<section class="card" style="margin-top:18px;border-color:#3b6594"><div class="card-head"><h2>Nuova richiesta materiali</h2><button class="btn" onclick="closeMaterialRequestForm()">Chiudi</button></div>
+  <p class="muted tiny">Compila i dati generali e la quantità per ogni componente selezionato. Il file Excel sarà generato senza eseguire macro.</p>
+  <div class="form-grid">
+   <div class="field"><label>Numero treno</label><input id="mrTrain" placeholder="Es. 29" required></div>
+   <div class="field"><label>ODL</label><input id="mrOdl" placeholder="Numero ODL"></div>
+   <div class="field"><label>Cantiere</label><input id="mrSite" value="NAPOLI"></div>
+   <div class="field"><label>Cassa</label><input id="mrCassa" placeholder="Es. TT2"></div>
+   <div class="field"><label>Tipo intervento</label><select id="mrType"><option>Correttiva</option><option>Preventiva</option><option> altro</option></select></div>
+   <div class="field"><label>Avviso</label><input id="mrNotice" value="ND"></div>
+   <div class="field"><label>WBS</label><input id="mrWbs" placeholder="Codice WBS"></div>
+   <div class="field"><label>Motivo della richiesta</label><input id="mrReason" placeholder="Descrizione del motivo"></div>
+   <div class="field"><label>Luogo di consegna</label><input id="mrDelivery" value="UFFICIO"></div>
+   <div class="field"><label>Persona di riferimento</label><input id="mrContact" placeholder="Nome / riferimento"></div>
+  </div>
+  <div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>Componente</th><th>Codice materiale</th><th>Descrizione</th><th>UM</th><th>Quantità</th></tr></thead><tbody>
+  ${records.map((r,i)=>`<tr><td>${escapeHtml(r.COMPONENTE||r.ELEMENTO||"—")}</td><td>${escapeHtml(r.Part_Number||r.Pn_Ricambio||r.PnRicambio2||"—")}</td><td style="white-space:normal">${escapeHtml(r.Descrizione_TI||r.COMPONENTE||"")}</td><td><input id="mrUm${i}" value="pz." style="width:70px"></td><td><input id="mrQty${i}" type="number" min="0.01" step="any" value="1" style="width:90px"></td></tr>`).join("")}
+  </tbody></table></div>
+  <div class="form-actions"><button class="btn" onclick="closeMaterialRequestForm()">Annulla</button><button class="btn primary" onclick="generateMaterialRequest()">Genera Excel e prepara email</button></div>
+  <div id="materialRequestMessage" class="muted tiny" style="margin-top:10px"></div></section>`;
+  host.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function closeMaterialRequestForm(){const h=document.getElementById("materialRequestHost");if(h)h.innerHTML=""}
+function excelCellValue(ws,addr){return ws.getCell(addr).value}
+function safeFilePart(v){return String(v||"").trim().replace(/[^a-z0-9_-]+/gi,"_").replace(/^_+|_+$/g,"")}
+function downloadBlob(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+function bytesToBase64(bytes){let binary="";const chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));return btoa(binary)}
+async function generateMaterialRequest(){
+ const msg=document.getElementById("materialRequestMessage");
+ try{
+  if(!window.ExcelJS)throw new Error("Libreria Excel non disponibile. Verifica la connessione Internet.");
+  const records=selectedMaterialRecords();if(!records.length)throw new Error("Non ci sono componenti selezionati.");
+  const val=id=>document.getElementById(id)?.value?.trim()||"";
+  const items=records.map((r,i)=>({r,qty:Number(val("mrQty"+i)),um:val("mrUm"+i)||"pz."}));
+  if(items.some(x=>!Number.isFinite(x.qty)||x.qty<=0))throw new Error("Inserisci una quantità valida per ogni componente.");
+  const response=await fetch("RICHIESTA MATERIALE.xlsx",{cache:"no-store"});
+  if(!response.ok)throw new Error("Modello Excel non trovato. Carica RICHIESTA MATERIALE.xlsx nella stessa cartella di index.html su GitHub Pages.");
+  const buffer=await response.arrayBuffer(),wb=new ExcelJS.Workbook();await wb.xlsx.load(buffer);
+  const ws=wb.getWorksheet("RICHIESTA MATERIALE");if(!ws)throw new Error("Nel modello manca il foglio RICHIESTA MATERIALE.");
+  const now=new Date(),dateText=now.toLocaleDateString("it-IT"),timeText=now.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
+  ws.getCell("F3").value=dateText;ws.getCell("I3").value=val("mrOdl");ws.getCell("L3").value=val("mrSite");ws.getCell("I4").value=val("mrTrain");
+  // Se servono più di quattro componenti, inserisce righe prima della riga END
+  // e sposta anche le celle unite della sezione note/consegna.
+  const extraRows=Math.max(0,items.length-4);
+  if(extraRows){
+    const merges=(ws.model.merges||[]).filter(ref=>{const m=String(ref).match(/^[A-Z]+(\d+):[A-Z]+(\d+)$/);return m&&Number(m[1])>=11;});
+    merges.forEach(ref=>ws.unMergeCells(ref));
+    ws.spliceRows(11,0,...Array.from({length:extraRows},()=>[]));
+    merges.forEach(ref=>{const m=String(ref).match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);if(m)ws.mergeCells(`${m[1]}${Number(m[2])+extraRows}:${m[3]}${Number(m[4])+extraRows}`);});
+  }
+  // Pulisce esclusivamente l'area delle righe materiali, preservando note e impaginazione.
+  const lastMaterialRow=6+items.length;
+  for(let row=7;row<=Math.max(10,lastMaterialRow);row++){
+    if(row>7){const source=ws.getRow(7),target=ws.getRow(row);source.eachCell({includeEmpty:true},(cell,col)=>{const c=target.getCell(col);c.style=JSON.parse(JSON.stringify(cell.style||{}));c.numFmt=cell.numFmt;c.alignment=cell.alignment?JSON.parse(JSON.stringify(cell.alignment)):undefined;});target.height=source.height;}
+    for(let col=1;col<=26;col++){const c=ws.getRow(row).getCell(col);if(!c.isMerged)c.value=null;}
+  }
+  items.forEach((it,i)=>{
+    const row=ws.getRow(7+i),r=it.r;
+    row.getCell(1).value=i+1;row.getCell(2).value=val("mrNotice")||"ND";row.getCell(3).value=val("mrType");row.getCell(4).value=val("mrType");row.getCell(5).value=val("mrWbs");row.getCell(6).value=val("mrCassa");row.getCell(7).value=dateText;row.getCell(8).value=timeText;row.getCell(9).value=val("mrReason");
+    const pn=r.Part_Number||r.Pn_Ricambio||r.PnRicambio2||r.Pn_CS2||"";
+    row.getCell(10).value=pn;row.getCell(12).value=r.Descrizione_TI||r.COMPONENTE||"";row.getCell(13).value=it.um;row.getCell(14).value=it.qty;row.getCell(18).value=pn;row.getCell(20).value=it.um;row.getCell(21).value=it.qty;
+  });
+  const endRow=7+items.length;ws.getCell("A"+(endRow)).value="END";
+  ws.getCell(`C${13+extraRows}`).value="INSERIRE IL LUOGO DI CONSEGNA ED IL RIFERIMENTO DELLA PERSONA PREPOSTA AL RITIRO DEL MATERIALE";
+  ws.getCell(`C${14+extraRows}`).value=[val("mrDelivery"),val("mrContact")].filter(Boolean).join(" - ");
+  const out=await wb.xlsx.writeBuffer();const blob=new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const filename=`Richiesta_materiale_Treno_${safeFilePart(val("mrTrain"))}_ODL_${safeFilePart(val("mrOdl"))}.xlsx`;
+  downloadBlob(blob,filename);
+  // Prepara un messaggio .eml con l'Excel allegato; l'utente verifica e invia da Outlook.
+  const mailWs=wb.getWorksheet("MAIL");
+  const recipients=String(mailWs?.getCell("D5").text||"").replace(/[>;]+/g,",").split(/[\s,]+/).filter(x=>/^[^@\s;]+@[^@\s;]+\.[^@\s;]+$/.test(x)).join("; ");
+  const dateStamp=now.toLocaleDateString("it-IT").replaceAll("/","");
+  const subject=`RICHIESTA MATERIALE NA TS-${val("mrTrain")} ODL${val("mrOdl")} ${dateStamp}`;
+  const body=String(mailWs?.getCell("D9").text||"LA RICHIESTA IN OGGETTO È IN LAVORAZIONE")+`\r\n\r\nLuogo di consegna: ${val("mrDelivery")}\r\nRiferimento: ${val("mrContact")}`;
+  const bytes=new Uint8Array(out),b64=bytesToBase64(bytes),boundary="----=_RailTech360_"+Date.now();
+  const eml=[`To: ${recipients}`,`Subject: ${subject}`,`MIME-Version: 1.0`,`Content-Type: multipart/mixed; boundary="${boundary}"`,``,`--${boundary}`,`Content-Type: text/plain; charset="UTF-8"`,`Content-Transfer-Encoding: 8bit`,``,body,``,`--${boundary}`,`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; name="${filename}"`,`Content-Transfer-Encoding: base64`,`Content-Disposition: attachment; filename="${filename}"`,``,b64.match(/.{1,76}/g).join("\r\n"),``,`--${boundary}--`,` `].join("\r\n");
+  downloadBlob(new Blob(["\ufeff"+eml],{type:"message/rfc822;charset=utf-8"}),filename.replace(/\.xlsx$/,".eml"));
+  if(msg)msg.textContent="File Excel e bozza email .eml generati. Apri il file .eml con Outlook, controlla destinatari e allegato, quindi invia manualmente.";
+  toast("Richiesta Excel e bozza email pronti.");
+ }catch(err){if(msg)msg.textContent=err.message||String(err);else toast(err.message||String(err));}
 }
 
 const COMPONENT_FIELDS=[
