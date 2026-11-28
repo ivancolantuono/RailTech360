@@ -1,1 +1,48 @@
 
+name: Telediagnostica Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      train:
+        description: "Numero treno da scansionare"
+        required: true
+        default: "102"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: bot
+
+    steps:
+      - name: Scarica repository
+        uses: actions/checkout@v4
+
+      - name: Configura Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bot/package-lock.json
+
+      - name: Installa dipendenze
+        run: npm install
+
+      - name: Installa browser Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Verifica configurazione
+        run: |
+          echo "Workflow avviato correttamente"
+          echo "Treno richiesto: ${{ inputs.train }}"
+          echo "Ambiente Node.js:"
+          node --version
+          npm --version
+
