@@ -4,7 +4,7 @@ name: Telediagnostica Scan
 on:
   # Aggiornamento automatico ogni 6 ore
   schedule:
-    - cron: "7 */6 * * *"
+    - cron: "30 18 * * *"
 
   # Avvio manuale
   workflow_dispatch:
