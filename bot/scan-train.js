@@ -22,7 +22,6 @@ const password = process.env.TELEDIA_PASSWORD;
 
 if (!loginUrl) throw new Error('TELEDIA_LOGIN_URL mancante.');
 if (!fleetUrl) throw new Error('TELEDIA_FLEET_URL mancante.');
-
 if (!username || !password) {
   throw new Error('TELEDIA_USERNAME o TELEDIA_PASSWORD mancanti.');
 }
@@ -676,22 +675,22 @@ async function readEvents() {
   return [...collected.values()];
 }
 // ======================================================
-// 10. PROCEDURA PRINCIPALE
+// 10. AVVIO DELLA SCANSIONE
 // ======================================================
 
 try {
+  console.log('');
   console.log('====================================');
-  console.log('AVVIO TELEDIAGNOSTICA');
-  console.log(`TRENO: ${train}`);
+  console.log('RAILTECH360 - TELEDIAGNOSTICA');
   console.log('====================================');
 
-  // LOGIN
+  console.log(`Treno richiesto: ${train}`);
+  console.log(`Veicolo: ${vehicleId}`);
+  console.log(`Sottosistema: ${cfg.subsystem}`);
+  console.log(`Periodo: ultimi ${cfg.days} giorni`);
 
+  // LOGIN AUTOMATICO E APERTURA FLOTTA
   await loginToTelediagnostica();
-
-  // APERTURA FLOTTA
-
-  console.log('Apro la pagina della flotta...');
 
   await page.goto(fleetUrl, {
     waitUntil: 'domcontentloaded',
@@ -701,12 +700,11 @@ try {
   await page.waitForTimeout(1500);
 
   if (/login\.aspx/i.test(page.url())) {
-    throw new Error('Nuovo login richiesto dal portale.');
+    throw new Error('Il portale ha richiesto nuovamente il login.');
   }
 
   // RICERCA TRENO
-
-  console.log(`Cerco ${vehicleId}...`);
+  console.log(`Cerco automaticamente ${vehicleId}...`);
 
   const vehicleFound = await findAndClickText(
     vehicleId,
@@ -722,16 +720,45 @@ try {
   await page.waitForLoadState('domcontentloaded')
     .catch(() => {});
 
+  await page.waitForTimeout(1200);
+
+  // APERTURA DIAGNOSTICA STORICA
+  const historyUrl = new URL(
+    '/TeleDia.Portal.Web/Portal/DiagnosticaStorica.aspx',
+    new URL(fleetUrl).origin
+  );
+
+  historyUrl.searchParams.set('fleet', 'ETR1000');
+  historyUrl.searchParams.set('loco', vehicleId);
+  historyUrl.searchParams.set('locale', 'it');
+
+  console.log('Apro Diagnostica Storica.');
+
+  await page.goto(historyUrl.toString(), {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000
+  });
+
   await page.waitForTimeout(1500);
 
+  if (/login\.aspx/i.test(page.url())) {
+    throw new Error(
+      'Sessione non valida durante apertura Diagnostica Storica.'
+    );
+  }
+
+  if (!page.url().toLowerCase().includes('diagnosticastorica.aspx')) {
+    throw new Error(
+      `Non sono arrivato alla Diagnostica Storica. URL: ${page.url()}`
+    );
+  }
+
   // ----------------------------------------------------
-  // FASE 1 - DATE E SOTTOSISTEMA
+  // FASE 1: DATE E SOTTOSISTEMA
   // ----------------------------------------------------
 
   console.log('');
-  console.log('====================================');
   console.log('FASE 1 - DATE E SOTTOSISTEMA');
-  console.log('====================================');
 
   const dateFrom = formatDate(cutoff);
   const dateTo = formatDate(now);
@@ -740,15 +767,11 @@ try {
   console.log('A:', dateTo);
   console.log('Sottosistema:', cfg.subsystem);
 
-  // COMPILAZIONE DATA INIZIALE
-
   await setKnownField(
     FIELD_IDS.from,
     dateFrom,
     'Da'
   );
-
-  // COMPILAZIONE DATA FINALE
 
   await setKnownField(
     FIELD_IDS.to,
@@ -756,15 +779,11 @@ try {
     'A'
   );
 
-  // COMPILAZIONE SOTTOSISTEMA
-
   await setKnownField(
     FIELD_IDS.subsystem,
     cfg.subsystem,
     'Sottosistema'
   );
-
-  // VERIFICA DEI TRE CAMPI
 
   const initialChecks = [
     {
@@ -787,53 +806,63 @@ try {
     matches: item.expected === item.actual
   }));
 
-  console.log('Verifica date e sottosistema:');
-  console.log(initialChecks);
-
-  await saveDebug(
-    'teledia-initial-check.json',
-    initialChecks
-  );
+  console.log('Verifica date e sottosistema:', initialChecks);
 
   if (!initialChecks.every(item => item.matches)) {
+    await saveDebug(
+      'teledia-initial-check.json',
+      initialChecks
+    );
+
     throw new Error(
-      'Verifica delle date o del sottosistema non superata.'
+      'Date o sottosistema non verificati. Procedura interrotta.'
     );
   }
 
   // ----------------------------------------------------
-  // FASE 2 - FILTRI EVENTI
+  // FASE 2: FILTRI EVENTI
   // ----------------------------------------------------
 
   console.log('');
-  console.log('====================================');
   console.log('FASE 2 - FILTRI EVENTI');
-  console.log('====================================');
 
   await clickTab('Eventi');
 
-  // NOME PARZIALE
-
+  // NOME EVENTO
   await openCriterion('Nome evento');
+
+  console.log('Inserisco Nome parziale:', cfg.eventName);
 
   const nameActual = await setPartialField(
     'Nome parziale',
     cfg.eventName
   );
 
+  if (nameActual !== cfg.eventName) {
+    throw new Error('Nome parziale non verificato.');
+  }
+
   await closeCriterion('Nome evento');
 
-  // DESCRIZIONE PARZIALE
-
+  // DESCRIZIONE EVENTO
   await openCriterion('Descrizione evento');
+
+  console.log(
+    'Inserisco Descrizione parziale:',
+    cfg.description
+  );
 
   const descriptionActual = await setPartialField(
     'Descrizione parziale',
     cfg.description
   );
 
+  if (descriptionActual !== cfg.description) {
+    throw new Error('Descrizione parziale non verificata.');
+  }
+
   // ----------------------------------------------------
-  // VERIFICA COMPLETA DEI CINQUE FILTRI
+  // VERIFICA DEI CINQUE FILTRI
   // ----------------------------------------------------
 
   const finalChecks = [
@@ -852,8 +881,7 @@ try {
     }
   ];
 
-  console.log('');
-  console.log('VERIFICA DEI CINQUE FILTRI:');
+  console.log('VERIFICA COMPLETA DEI CINQUE FILTRI:');
   console.log(finalChecks);
 
   await saveDebug(
@@ -863,11 +891,11 @@ try {
 
   if (!finalChecks.every(item => item.matches)) {
     throw new Error(
-      'Verifica dei cinque filtri non superata.'
+      'Verifica dei filtri non superata. Ricerca non avviata.'
     );
   }
 
-  console.log('TUTTI I FILTRI SONO STATI VERIFICATI.');
+  console.log('TUTTI E CINQUE I FILTRI SONO CORRETTI.');
 
   // ----------------------------------------------------
   // AVVIO RICERCA
@@ -877,7 +905,7 @@ try {
     throw new Error('Pulsante Cerca non trovato.');
   }
 
-  console.log('Ricerca avviata.');
+  console.log('Pulsante Cerca premuto.');
 
   await page.waitForTimeout(4000);
 
@@ -890,7 +918,7 @@ try {
   console.log(`Righe estratte: ${rawRows.length}`);
 
   // ----------------------------------------------------
-  // MAPPATURA RISULTATI
+  // MAPPATURA COLONNE
   // ----------------------------------------------------
 
   const events = rawRows.map(row => ({
@@ -914,7 +942,7 @@ try {
   }));
 
   // ----------------------------------------------------
-  // FILTRO FINALE
+  // FILTRO FINALE LOCALE
   // ----------------------------------------------------
 
   const matches = events.filter(event => {
@@ -937,6 +965,7 @@ try {
       descriptionOk &&
       subsystemOk &&
       dateOk;
+
   }).map(event => ({
     ...event,
     status: 'Da validare',
@@ -955,6 +984,7 @@ try {
     JSON.stringify({
       capturedAt: new Date().toISOString(),
       vehicleId,
+      url: page.url(),
       rowCount: events.length,
       rows: events
     }, null, 2)
@@ -994,10 +1024,10 @@ try {
     );
   }
 
-  console.log('RISULTATI SALVATI.');
+  console.log('JSON salvati nella cartella output.');
 
   // ----------------------------------------------------
-  // SUPABASE - DISATTIVATO PER IL TEST
+  // SUPABASE OPZIONALE
   // ----------------------------------------------------
 
   if (
