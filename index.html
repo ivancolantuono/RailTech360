@@ -723,6 +723,7 @@ main,.content,.card,.grid,.columns,.table-wrap{min-width:0;max-width:100%}
         <button data-page="mcm"><span class="ico">⌁</span>Analizza Log MCM</button>
         <button data-page="lcm"><span class="ico">ϟ</span>Analizza Log LCM</button>
         <button data-page="sensori"><span class="ico">∿</span>Misurazione sensori</button>
+        <button data-page="telediagnostica"><span class="ico">🚆</span>Telediagnostica</button>
       </div>
     </details>
   </nav></div>
@@ -873,7 +874,7 @@ try { data=JSON.parse(localStorage.getItem("railtech360_data")) || structuredClo
 function save(){localStorage.setItem("railtech360_data",JSON.stringify(data))}
 let currentPage="cercaComponente";
 const content=document.getElementById("content");
-const pages={cercaComponente:"Cerca componente",catalogoRicambi:"Ricerca catalogo ricambi",openitem:"Open Item",archivioScadenze:"Archivio scadenze",ricercaPdf:"Ricerca contenuto PDF",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM"};
+const pages={cercaComponente:"Cerca componente",catalogoRicambi:"Ricerca catalogo ricambi",openitem:"Open Item",archivioScadenze:"Archivio scadenze",ricercaPdf:"Ricerca contenuto PDF",sensori:"Misurazione sensori",fde:"Analizza Log FDE",ccm:"Analizza Log CCM",mcm:"Analizza Log MCM",lcm:"Analizza Log LCM",telediagnostica:"Telediagnostica"};
 function toast(msg){let t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",3000)}
 function statusClass(s){if(/completato|chiuso|regolare/i.test(s))return"s-done";if(/lavorazione|analisi/i.test(s))return"s-work";if(/alta|critico/i.test(s))return"s-critical";return"s-open"}
 function pill(s){return `<span class="status ${statusClass(s)}">${s}</span>`}
@@ -1547,7 +1548,70 @@ function initDropboxBrowser(){
   });
 }
 
-function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",catalogoRicambi:"magazzino",openitem:"openitem",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,catalogoRicambi:()=>ricercaPdfPage(true),openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage};dropboxPdfSearchSource=currentPage==="catalogoRicambi"?"catalogo":"scadenze";if(currentPage==="catalogoRicambi"){dropboxCurrentPath=null;dropboxPathHistory=[];}content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf"||currentPage==="catalogoRicambi")initDropboxBrowser();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
+
+function telediagnosticaPage(){
+  return head("Telediagnostica","Eventi acquisiti dal bot e archiviati su Supabase")+
+  `<section class="card">
+    <div class="toolbar">
+      <select id="tdTrain"><option value="">Tutti i treni</option>${Array.from({length:13},(_,i)=>`<option value="${i+101}">${i+101}</option>`).join("")}</select>
+      <select id="tdSubsystem"><option value="">Tutti i sottosistemi</option><option value="Trazione">Trazione</option><option value="HVAC">HVAC</option><option value="FDE">FDE</option><option value="Pneumatica">Pneumatica</option></select>
+      <select id="tdStatus"><option value="">Tutti gli stati</option><option value="Da validare">Da validare</option><option value="In lavorazione">In lavorazione</option><option value="Chiuso">Chiuso</option></select>
+      <input id="tdSearch" type="search" placeholder="Cerca ID, evento, descrizione, carrozza…">
+      <button class="btn primary" id="tdSearchBtn" type="button">Cerca</button>
+      <button class="btn" id="tdRefreshBtn" type="button">Aggiorna</button>
+    </div>
+    <div id="tdMessage" class="muted" style="padding:8px 0 14px">Caricamento eventi Telediagnostica…</div>
+    <div class="grid kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="card"><div class="kpi-top">Eventi visualizzati</div><div class="kpi-num" id="tdTotal">—</div></div>
+      <div class="card"><div class="kpi-top">Da validare</div><div class="kpi-num" id="tdPending">—</div></div>
+      <div class="card"><div class="kpi-top">Treni presenti</div><div class="kpi-num" id="tdTrains">—</div></div>
+    </div>
+    <div id="tdResults" class="table-wrap"></div>
+  </section>`;
+}
+async function loadTelediagnostica(){
+  const msg=document.getElementById("tdMessage"),out=document.getElementById("tdResults");
+  if(!msg||!out)return;
+  msg.textContent="Lettura eventi da Supabase…";out.innerHTML="";
+  const cfg=getSupabaseConfig();
+  try{
+    if(!window.supabase)throw new Error("Libreria Supabase non caricata.");
+    if(!cfg?.url||!cfg?.key)throw new Error("Configurazione Supabase mancante.");
+    const client=window.supabase.createClient(cfg.url,cfg.key);
+    let query=client.from("telediagnostica_eventi").select("*").order("created_at",{ascending:false}).limit(1000);
+    const train=document.getElementById("tdTrain")?.value||"";
+    const subsystem=document.getElementById("tdSubsystem")?.value||"";
+    const status=document.getElementById("tdStatus")?.value||"";
+    const search=(document.getElementById("tdSearch")?.value||"").trim();
+    if(train)query=query.eq("train_number",train);
+    if(subsystem)query=query.eq("subsystem",subsystem);
+    if(status)query=query.eq("status",status);
+    if(search)query=query.or(`event_name.ilike.%${search}%,description.ilike.%${search}%,source_event_id.ilike.%${search}%,coach.ilike.%${search}%`);
+    const {data,error}=await query;
+    if(error)throw error;
+    const rows=data||[];
+    document.getElementById("tdTotal").textContent=rows.length;
+    document.getElementById("tdPending").textContent=rows.filter(x=>x.status==="Da validare").length;
+    document.getElementById("tdTrains").textContent=new Set(rows.map(x=>x.train_number)).size;
+    if(!rows.length){msg.textContent="Nessun evento trovato con i filtri selezionati.";out.innerHTML='<div class="empty">Non ci sono eventi da visualizzare.</div>';return;}
+    msg.textContent=`Trovati ${rows.length} eventi (massimo 1.000 visualizzati).`;
+    const esc=escapeHtml;
+    out.innerHTML=`<table><thead><tr><th>Treno</th><th>Data evento</th><th>Carrozza</th><th>ID evento</th><th>Sottosistema</th><th>Nome evento</th><th>Descrizione</th><th>Priorità</th><th>Stato</th></tr></thead><tbody>${
+      rows.map(x=>`<tr><td>${esc(x.train_number||"")}</td><td>${esc(x.start_at_raw||"")}</td><td>${esc(x.coach||"")}</td><td>${esc(x.source_event_id||"")}</td><td>${esc(x.subsystem||"")}</td><td>${esc(x.event_name||"")}</td><td style="white-space:normal;min-width:180px">${esc(x.description||"")}</td><td>${esc(x.priority||"")}</td><td>${esc(x.status||"Da validare")}</td></tr>`).join("")
+    }</tbody></table>`;
+  }catch(err){
+    msg.textContent="Errore nel caricamento: "+(err.message||String(err));
+    out.innerHTML='<div class="notice">Verifica la chiave pubblicabile configurata in RailTech360 e i permessi SELECT (RLS) della tabella telediagnostica_eventi.</div>';
+  }
+}
+function initTelediagnostica(){
+  ["tdSearchBtn","tdRefreshBtn"].forEach(id=>document.getElementById(id)?.addEventListener("click",loadTelediagnostica));
+  ["tdTrain","tdSubsystem","tdStatus"].forEach(id=>document.getElementById(id)?.addEventListener("change",loadTelediagnostica));
+  document.getElementById("tdSearch")?.addEventListener("keydown",e=>{if(e.key==="Enter")loadTelediagnostica()});
+  loadTelediagnostica();
+}
+
+function render(){document.getElementById("crumbCurrent").textContent=pages[currentPage];document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===currentPage));const activeGroup={cercaComponente:"magazzino",catalogoRicambi:"magazzino",openitem:"openitem",archivioScadenze:"scadenze",ricercaPdf:"scadenze",sensori:"diagnostica",fde:"diagnostica",ccm:"diagnostica",mcm:"diagnostica",lcm:"diagnostica",telediagnostica:"diagnostica"}[currentPage];document.querySelectorAll("#nav details.nav-group").forEach(g=>{g.open=g.dataset.group===activeGroup});const f={cercaComponente:cercaComponentePage,catalogoRicambi:()=>ricercaPdfPage(true),openitem:openitemPage,archivioScadenze:archivioScadenzePage,ricercaPdf:ricercaPdfPage,sensori:sensoriPage,fde:fdePage,ccm:ccmPage,mcm:mcmPage,lcm:lcmPage,telediagnostica:telediagnosticaPage};dropboxPdfSearchSource=currentPage==="catalogoRicambi"?"catalogo":"scadenze";if(currentPage==="catalogoRicambi"){dropboxCurrentPath=null;dropboxPathHistory=[];}content.innerHTML=f[currentPage]();if(currentPage==="archivioScadenze"||currentPage==="ricercaPdf"||currentPage==="catalogoRicambi")initDropboxBrowser();if(currentPage==="telediagnostica")initTelediagnostica();const s=document.getElementById("globalSearch");if(s)s.addEventListener("input",()=>{let q=s.value.toLowerCase();document.querySelectorAll("tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none")})}
 function go(p){currentPage=p;render();document.getElementById("sidebar").classList.remove("open");window.scrollTo(0,0);if(p==="openitem")loadOpenItems()}
 document.getElementById("nav").addEventListener("click",e=>{let b=e.target.closest("button[data-page]");if(b)go(b.dataset.page)});
 document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
