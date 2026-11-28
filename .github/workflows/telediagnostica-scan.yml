@@ -2,12 +2,17 @@
 name: Telediagnostica Scan
 
 on:
+  # Aggiornamento automatico ogni 6 ore
+  schedule:
+    - cron: "0 */6 * * *"
+
+  # Avvio manuale
   workflow_dispatch:
     inputs:
       train:
         description: Seleziona il treno da analizzare
         required: true
-        default: "102"
+        default: "ALL"
         type: choice
         options:
           - "ALL"
@@ -25,6 +30,14 @@ on:
           - "112"
           - "113"
 
+# Evita scansioni sovrapposte
+concurrency:
+  group: telediagnostica-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   scan:
     runs-on: ubuntu-latest
@@ -33,26 +46,32 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 1
+
       matrix:
-        train: ${{ github.event.inputs.train == 'ALL' && fromJSON('["101","102","103","104","105","106","107","108","109","110","111","112","113"]') || fromJSON(format('["{0}"]', github.event.inputs.train)) }}
+        train: ${{ fromJSON((github.event_name == 'schedule' || inputs.train == 'ALL') && '["101","102","103","104","105","106","107","108","109","110","111","112","113"]' || format('["{0}"]', inputs.train)) }}
 
     steps:
+      # 1. Scarica il repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Configura Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
+      # 3. Installa le dipendenze
       - name: Install dependencies
         working-directory: bot
         run: npm install
 
+      # 4. Installa Chromium per Playwright
       - name: Install Playwright Chromium
         working-directory: bot
         run: npx playwright install --with-deps chromium
 
+      # 5. Esegue la scansione
       - name: Scansione Telediagnostica
         working-directory: bot
         env:
@@ -77,6 +96,7 @@ jobs:
 
         run: npm run scan -- "$TELEDIA_TRAIN"
 
+      # 6. Carica i risultati come archivio
       - name: Upload risultati scansione
         if: always()
         uses: actions/upload-artifact@v4
