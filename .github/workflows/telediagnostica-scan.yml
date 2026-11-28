@@ -5,42 +5,54 @@ on:
   workflow_dispatch:
     inputs:
       train:
-        description: "Numero treno da scansionare"
+        description: Numero treno da analizzare
         required: true
         default: "102"
-
-permissions:
-  contents: read
+        type: string
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    defaults:
-      run:
-        working-directory: bot
-
     steps:
-      - name: Scarica repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configura Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          
-      - name: Installa dipendenze
+          node-version: "22"
+
+      - name: Install dependencies
+        working-directory: bot
         run: npm install
 
-      - name: Installa browser Playwright
+      - name: Install Playwright Chromium
+        working-directory: bot
         run: npx playwright install --with-deps chromium
 
-      - name: Verifica configurazione
-        run: |
-          echo "Workflow avviato correttamente"
-          echo "Treno richiesto: ${{ inputs.train }}"
-          echo "Ambiente Node.js:"
-          node --version
-          npm --version
+      - name: Scansione Telediagnostica
+        working-directory: bot
+        env:
+          TELEDIA_USERNAME: ${{ secrets.TELEDIA_USERNAME }}
+          TELEDIA_PASSWORD: ${{ secrets.TELEDIA_PASSWORD }}
+          TELEDIA_LOGIN_URL: ${{ secrets.TELEDIA_LOGIN_URL }}
+          TELEDIA_FLEET_URL: ${{ secrets.TELEDIA_FLEET_URL }}
+          TELEDIA_TRAIN: ${{ inputs.train }}
+          FILTER_SUBSYSTEM: "Trazione"
+          FILTER_EVENT_NAME: "*dia*"
+          FILTER_DESCRIPTION: "*apertura*"
+          FILTER_DAYS: "10"
+          HEADLESS: "true"
+          SAVE_TO_SUPABASE: "false"
+        run: npm run scan -- "$TELEDIA_TRAIN"
 
+      - name: Upload risultati scansione
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telediagnostica-treno-${{ inputs.train }}
+          path: bot/output/
+          if-no-files-found: ignore
+          retention-days: 7
