@@ -5,15 +5,36 @@ on:
   workflow_dispatch:
     inputs:
       train:
-        description: Numero treno da analizzare
+        description: Seleziona un treno oppure tutti
         required: true
         default: "102"
-        type: string
+        type: choice
+        options:
+          - "ALL"
+          - "101"
+          - "102"
+          - "103"
+          - "104"
+          - "105"
+          - "106"
+          - "107"
+          - "108"
+          - "109"
+          - "110"
+          - "111"
+          - "112"
+          - "113"
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        train: ${{ github.event.inputs.train == 'ALL' && fromJSON('["101","102","103","104","105","106","107","108","109","110","111","112","113"]') || fromJSON(format('["{0}"]', github.event.inputs.train)) }}
 
     steps:
       - name: Checkout repository
@@ -39,7 +60,7 @@ jobs:
           TELEDIA_PASSWORD: ${{ secrets.TELEDIA_PASSWORD }}
           TELEDIA_LOGIN_URL: ${{ secrets.TELEDIA_LOGIN_URL }}
           TELEDIA_FLEET_URL: ${{ secrets.TELEDIA_FLEET_URL }}
-          TELEDIA_TRAIN: ${{ inputs.train }}
+          TELEDIA_TRAIN: ${{ matrix.train }}
           FILTER_SUBSYSTEM: "Trazione"
           FILTER_EVENT_NAME: "*dia*"
           FILTER_DESCRIPTION: "*apertura*"
@@ -52,7 +73,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: telediagnostica-treno-${{ inputs.train }}
+          name: telediagnostica-treno-${{ matrix.train }}
           path: bot/output/
           if-no-files-found: ignore
           retention-days: 7
