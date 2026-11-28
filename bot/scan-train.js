@@ -22,6 +22,7 @@ const password = process.env.TELEDIA_PASSWORD;
 
 if (!loginUrl) throw new Error('TELEDIA_LOGIN_URL mancante.');
 if (!fleetUrl) throw new Error('TELEDIA_FLEET_URL mancante.');
+
 if (!username || !password) {
   throw new Error('TELEDIA_USERNAME o TELEDIA_PASSWORD mancanti.');
 }
@@ -42,10 +43,12 @@ const cutoff = new Date(
   now.getTime() - cfg.days * 24 * 60 * 60 * 1000
 );
 
+// IDENTIFICATIVI REALI RILEVATI DAL PORTALE
+
 const FIELD_IDS = {
-  from: 'rdpDaData_dateInput',
-  to: 'rdpAData_dateInput',
-  subsystem: 'rtbSubSystem'
+  from: 'ctl00_MainContent_filtro_rpbFiltro_i0_rdpDaData_dateInput',
+  to: 'ctl00_MainContent_filtro_rpbFiltro_i0_rdpAData_dateInput',
+  subsystem: 'ctl00_MainContent_filtro_rpbFiltro_i0_rtbSubSystem'
 };
 
 // ======================================================
@@ -122,7 +125,10 @@ async function loginToTelediagnostica() {
   console.log('Invio le credenziali al portale...');
 
   await page.locator('#LoginUser_LoginButton').click();
-  await page.waitForLoadState('domcontentloaded').catch(() => {});
+
+  await page.waitForLoadState('domcontentloaded')
+    .catch(() => {});
+
   await page.waitForTimeout(1500);
 
   if (/login\.aspx/i.test(page.url())) {
@@ -315,19 +321,32 @@ async function closeCriterion(name) {
 // 6. COMPILAZIONE DATE E SOTTOSISTEMA
 // ======================================================
 
-async function setKnownField(suffix, value, label) {
+async function setKnownField(fieldId, value, label) {
+  const diagnostics = [];
+
   for (const frame of page.frames()) {
     try {
       const locator = frame.locator(
-        `input[id$="${suffix}"]`
+        `input[id="${fieldId}"]`
       ).first();
 
-      if (
-        await locator.count() &&
-        await locator.isVisible()
-      ) {
+      const count = await locator.count();
+
+      const visible = count
+        ? await locator.isVisible().catch(() => false)
+        : false;
+
+      diagnostics.push({
+        frame: frame.url(),
+        count,
+        visible
+      });
+
+      if (count && visible) {
         await locator.fill(value);
         await locator.press('Tab').catch(() => {});
+
+        await page.waitForTimeout(250);
 
         const actual = await locator.inputValue();
 
@@ -338,7 +357,7 @@ async function setKnownField(suffix, value, label) {
 
         if (actual !== value) {
           throw new Error(
-            `Valore errato nel campo ${label}.`
+            `Valore errato nel campo ${label}: atteso "${value}", trovato "${actual}".`
           );
         }
 
@@ -351,32 +370,36 @@ async function setKnownField(suffix, value, label) {
     }
   }
 
+  await saveDebug(
+    `debug-campo-${label.replace(/\s+/g, '-')}.json`,
+    diagnostics
+  );
+
   throw new Error(
-    `Campo ${label} non trovato tramite ID ${suffix}.`
+    `Campo ${label} non trovato o non visibile. ID cercato: ${fieldId}`
   );
 }
 
-async function readKnownField(suffix) {
+async function readKnownField(fieldId) {
   for (const frame of page.frames()) {
     try {
       const locator = frame.locator(
-        `input[id$="${suffix}"]`
+        `input[id="${fieldId}"]`
       ).first();
 
       if (
         await locator.count() &&
-        await locator.isVisible()
+        await locator.isVisible().catch(() => false)
       ) {
         return await locator.inputValue();
       }
     } catch {
-      // Continua.
+      // Continua con il frame successivo.
     }
   }
 
   return null;
 }
-
 // ======================================================
 // 7. COMPILAZIONE NOME PARZIALE E DESCRIZIONE PARZIALE
 // ======================================================
@@ -471,13 +494,7 @@ async function setPartialField(caption, value) {
           if (!best) {
             return {
               success: false,
-              reason: 'Campo non trovato sotto etichetta',
-              labels: labels.length,
-              inputs: inputs.map(input => ({
-                id: input.id,
-                name: input.name,
-                value: input.value
-              }))
+              reason: 'Campo non trovato sotto etichetta'
             };
           }
 
@@ -525,6 +542,7 @@ async function setPartialField(caption, value) {
         `debug-${caption.replace(/\s+/g, '-')}.json`,
         result
       );
+
     } catch (error) {
       console.log(
         `Errore campo ${caption}:`,
@@ -573,8 +591,9 @@ async function clickSearchButton() {
       });
 
       if (clicked) return true;
+
     } catch {
-      // Continua.
+      // Continua con il frame successivo.
     }
   }
 
@@ -640,6 +659,7 @@ async function readEvents() {
       for (const row of result.rows) {
         collected.set(row.join('|'), row);
       }
+
     } catch (error) {
       frameDebug.push({
         url: frame.url(),
@@ -665,9 +685,11 @@ try {
   console.log(`TRENO: ${train}`);
   console.log('====================================');
 
-  // LOGIN AUTOMATICO E APERTURA FLOTTA
+  // LOGIN
 
   await loginToTelediagnostica();
+
+  // APERTURA FLOTTA
 
   console.log('Apro la pagina della flotta...');
 
@@ -679,14 +701,12 @@ try {
   await page.waitForTimeout(1500);
 
   if (/login\.aspx/i.test(page.url())) {
-    throw new Error(
-      'Il portale ha richiesto nuovamente il login.'
-    );
+    throw new Error('Nuovo login richiesto dal portale.');
   }
 
   // RICERCA TRENO
 
-  console.log(`Cerco automaticamente ${vehicleId}...`);
+  console.log(`Cerco ${vehicleId}...`);
 
   const vehicleFound = await findAndClickText(
     vehicleId,
@@ -702,10 +722,10 @@ try {
   await page.waitForLoadState('domcontentloaded')
     .catch(() => {});
 
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1500);
 
   // ----------------------------------------------------
-  // FASE 1: VEICOLI - DATE E SOTTOSISTEMA
+  // FASE 1 - DATE E SOTTOSISTEMA
   // ----------------------------------------------------
 
   console.log('');
@@ -720,11 +740,15 @@ try {
   console.log('A:', dateTo);
   console.log('Sottosistema:', cfg.subsystem);
 
+  // COMPILAZIONE DATA INIZIALE
+
   await setKnownField(
     FIELD_IDS.from,
     dateFrom,
     'Da'
   );
+
+  // COMPILAZIONE DATA FINALE
 
   await setKnownField(
     FIELD_IDS.to,
@@ -732,11 +756,15 @@ try {
     'A'
   );
 
+  // COMPILAZIONE SOTTOSISTEMA
+
   await setKnownField(
     FIELD_IDS.subsystem,
     cfg.subsystem,
     'Sottosistema'
   );
+
+  // VERIFICA DEI TRE CAMPI
 
   const initialChecks = [
     {
@@ -759,18 +787,22 @@ try {
     matches: item.expected === item.actual
   }));
 
-  console.log('Verifica date e sottosistema:', initialChecks);
+  console.log('Verifica date e sottosistema:');
+  console.log(initialChecks);
+
+  await saveDebug(
+    'teledia-initial-check.json',
+    initialChecks
+  );
 
   if (!initialChecks.every(item => item.matches)) {
-    await saveDebug('teledia-initial-check.json', initialChecks);
-
     throw new Error(
-      'Date o sottosistema non verificati. Procedura interrotta.'
+      'Verifica delle date o del sottosistema non superata.'
     );
   }
 
   // ----------------------------------------------------
-  // FASE 2: EVENTI - NOME E DESCRIZIONE
+  // FASE 2 - FILTRI EVENTI
   // ----------------------------------------------------
 
   console.log('');
@@ -780,44 +812,25 @@ try {
 
   await clickTab('Eventi');
 
-  // NOME EVENTO
+  // NOME PARZIALE
 
-  console.log('');
   await openCriterion('Nome evento');
-
-  console.log('Inserisco Nome parziale:', cfg.eventName);
 
   const nameActual = await setPartialField(
     'Nome parziale',
     cfg.eventName
   );
 
-  if (nameActual !== cfg.eventName) {
-    throw new Error('Nome parziale non verificato.');
-  }
-
-  // Chiude Nome evento prima di aprire Descrizione.
-
   await closeCriterion('Nome evento');
 
-  // DESCRIZIONE EVENTO
+  // DESCRIZIONE PARZIALE
 
-  console.log('');
   await openCriterion('Descrizione evento');
-
-  console.log(
-    'Inserisco Descrizione parziale:',
-    cfg.description
-  );
 
   const descriptionActual = await setPartialField(
     'Descrizione parziale',
     cfg.description
   );
-
-  if (descriptionActual !== cfg.description) {
-    throw new Error('Descrizione parziale non verificata.');
-  }
 
   // ----------------------------------------------------
   // VERIFICA COMPLETA DEI CINQUE FILTRI
@@ -840,7 +853,7 @@ try {
   ];
 
   console.log('');
-  console.log('VERIFICA COMPLETA DEI CINQUE FILTRI:');
+  console.log('VERIFICA DEI CINQUE FILTRI:');
   console.log(finalChecks);
 
   await saveDebug(
@@ -850,11 +863,11 @@ try {
 
   if (!finalChecks.every(item => item.matches)) {
     throw new Error(
-      'Verifica dei filtri non superata. Ricerca non avviata.'
+      'Verifica dei cinque filtri non superata.'
     );
   }
 
-  console.log('TUTTI E CINQUE I FILTRI SONO CORRETTI.');
+  console.log('TUTTI I FILTRI SONO STATI VERIFICATI.');
 
   // ----------------------------------------------------
   // AVVIO RICERCA
@@ -864,7 +877,7 @@ try {
     throw new Error('Pulsante Cerca non trovato.');
   }
 
-  console.log('Pulsante Cerca premuto.');
+  console.log('Ricerca avviata.');
 
   await page.waitForTimeout(4000);
 
@@ -877,7 +890,7 @@ try {
   console.log(`Righe estratte: ${rawRows.length}`);
 
   // ----------------------------------------------------
-  // MAPPATURA COLONNE
+  // MAPPATURA RISULTATI
   // ----------------------------------------------------
 
   const events = rawRows.map(row => ({
@@ -901,7 +914,7 @@ try {
   }));
 
   // ----------------------------------------------------
-  // FILTRO FINALE LOCALE
+  // FILTRO FINALE
   // ----------------------------------------------------
 
   const matches = events.filter(event => {
@@ -942,7 +955,6 @@ try {
     JSON.stringify({
       capturedAt: new Date().toISOString(),
       vehicleId,
-      url: page.url(),
       rowCount: events.length,
       rows: events
     }, null, 2)
@@ -982,10 +994,10 @@ try {
     );
   }
 
-  console.log('JSON salvati nella cartella output.');
+  console.log('RISULTATI SALVATI.');
 
   // ----------------------------------------------------
-  // SUPABASE OPZIONALE
+  // SUPABASE - DISATTIVATO PER IL TEST
   // ----------------------------------------------------
 
   if (
