@@ -713,8 +713,6 @@ try {
   console.log('FASE 1 - DATE E SOTTOSISTEMA');
   console.log('====================================');
 
-  await clickTab('Veicoli');
-
   const dateFrom = formatDate(cutoff);
   const dateTo = formatDate(now);
 
