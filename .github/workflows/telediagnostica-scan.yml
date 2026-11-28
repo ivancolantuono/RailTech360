@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       train:
-        description: Seleziona un treno oppure tutti
+        description: Seleziona il treno da analizzare
         required: true
         default: "102"
         type: choice
@@ -60,13 +60,21 @@ jobs:
           TELEDIA_PASSWORD: ${{ secrets.TELEDIA_PASSWORD }}
           TELEDIA_LOGIN_URL: ${{ secrets.TELEDIA_LOGIN_URL }}
           TELEDIA_FLEET_URL: ${{ secrets.TELEDIA_FLEET_URL }}
+
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
           TELEDIA_TRAIN: ${{ matrix.train }}
+
           FILTER_SUBSYSTEM: "Trazione"
           FILTER_EVENT_NAME: "*dia*"
           FILTER_DESCRIPTION: "*apertura*"
           FILTER_DAYS: "10"
+
           HEADLESS: "true"
-          SAVE_TO_SUPABASE: "false"
+          SAVE_TO_SUPABASE: "true"
+          SUPABASE_TABLE: "telediagnostica_eventi"
+
         run: npm run scan -- "$TELEDIA_TRAIN"
 
       - name: Upload risultati scansione
