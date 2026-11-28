@@ -1,1 +1,17 @@
 
+name: Schedule Test
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify automatic execution
+        run: |
+          echo "SCHEDULE OK"
+          echo "UTC time: $(date -u)"
+
